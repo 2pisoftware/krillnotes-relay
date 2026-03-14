@@ -52,7 +52,9 @@ line plus detail table).
 
 - `humanBytes($bytes)` — e.g. `4.2 MB`, `256 KB`
 - `relativeTime($timestamp)` — e.g. `3h ago`, `12d ago`, `never`
-- `progressBar($current, $max)` — e.g. `54.2 MB / 100 MB (54%)`
+- `progressBar($current, $max)` — e.g. `54.2 MB / 100 MB (54%)`. When
+  `$current > $max` (e.g. stale `storage_used`), renders as-is without clamping:
+  `112.3 MB / 100 MB (112%)`.
 
 ## Section Details
 
@@ -120,9 +122,10 @@ Sessions: 18 active, oldest: 28d ago (expires in 2d), 3 accounts with active ses
 | alice@example.com | 3 | 1h ago | 14d ago | in 16d |
 | bob@example.com | 1 | 5d ago | 5d ago | in 25d |
 
-- Expires computed directly from `sessions.expires_at` (not derived from
+- Expires shows the soonest-expiring session per account (`MIN(expires_at)`),
+  computed directly from `sessions.expires_at` (not derived from
   `session_lifetime_seconds`, since the setting only applies at creation time).
-  Flags sessions expiring within 24h.
+  Flags when the soonest session expires within 24h.
 - Followed by challenge and password-reset summaries:
 
 ```
