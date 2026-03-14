@@ -1,6 +1,6 @@
 # swarm-relay
 
-A lightweight store-and-forward sync server for [KrillNotes](https://krillnotes.com). It receives encrypted sync bundles from one device and holds them until other devices belonging to the same account poll for them.
+A lightweight store-and-forward sync server for [KrillNotes](https://krillnotes.com). It routes encrypted sync bundles between any combination of peers — devices belonging to the same account, or collaborators sharing a workspace with different accounts. It also simplifies workspace invitations: the inviter uploads an invite package to the relay and shares a single URL; the recipient fetches it without needing a direct connection.
 
 The relay is intentionally dumb: it never sees plaintext data. All bundles are end-to-end encrypted by the client before upload. The relay only routes, stores, and expires them.
 
