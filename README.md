@@ -104,6 +104,8 @@ php -S localhost:8080 -t public/ public/index.php
 
 ## API overview
 
+> **Full reference:** [`docs/api.md`](docs/api.md) — every endpoint with request/response fields, error codes, and the PoP handshake protocol.
+
 All request and response bodies are JSON. Authenticated endpoints require a `Bearer` token in the `Authorization` header.
 
 ### Authentication
