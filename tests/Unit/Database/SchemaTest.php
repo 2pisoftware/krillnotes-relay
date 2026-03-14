@@ -38,6 +38,7 @@ final class SchemaTest extends TestCase
             'bundles',
             'challenges',
             'device_keys',
+            'invites',
             'mailboxes',
             'password_resets',
             'sessions',
