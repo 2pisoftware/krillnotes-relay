@@ -43,6 +43,7 @@ php bin/admin.php bundles      # Bundle/workspace details
 php bin/admin.php sessions     # Session/challenge/reset details
 php bin/admin.php invites      # Invite details
 php bin/admin.php health       # System health + settings
+php bin/admin.php reset-password <email> <new_password>  # Directly set a user's password
 ```
 
 ## Project layout
@@ -58,7 +59,7 @@ config/
   settings.php    # All tunables (limits, lifetimes, paths)
   container.php   # PHP-DI bindings
   routes.php      # All 15 routes
-migrations/       # 001–007 SQLite .sql files (run once, tracked in _migrations table)
+migrations/       # 001–008 SQLite .sql files (run once, tracked in _migrations table)
 storage/
   database/       # relay.sqlite lives here
   bundles/        # .swarm blob files, sharded by 2-char prefix (like Git objects)
