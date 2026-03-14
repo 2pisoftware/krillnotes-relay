@@ -4,6 +4,15 @@
 
 All request and response bodies use `Content-Type: application/json` unless stated otherwise. All responses follow one of two envelope shapes:
 
+> **Required request headers** — every request must include both of the following headers or the server will return `418` (blocked at the web server layer before the application runs):
+>
+> | Header | Required value |
+> |--------|----------------|
+> | `Content-Type` | `application/json` |
+> | `User-Agent` | Any non-empty string, e.g. `KrillNotes/1.0` |
+>
+> Requests sent over HTTP/1.1 without a `User-Agent` header are silently rejected with `418 0 bytes` — no JSON body is returned because the block occurs in the web server (nginx), not in the application.
+
 ```json
 { "data": { ... } }        // success
 { "error": { "code": "SNAKE_CASE_CODE", "message": "Human-readable description" } }
