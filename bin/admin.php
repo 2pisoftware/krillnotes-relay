@@ -10,6 +10,7 @@
  *   php bin/admin.php sessions     Session, challenge, and reset details
  *   php bin/admin.php invites      Invite details
  *   php bin/admin.php health       System health
+ *   php bin/admin.php reset-password <email> <new_password>  Reset a user's password
  *   php bin/admin.php help         Show this help
  */
 
