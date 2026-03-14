@@ -18,6 +18,7 @@ $settings = require __DIR__ . '/../config/settings.php';
 $dirs = [
     dirname($settings['database']['path']),
     $settings['storage']['bundles_path'],
+    $settings['storage']['invites_path'],
 ];
 
 foreach ($dirs as $dir) {

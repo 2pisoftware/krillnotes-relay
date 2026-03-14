@@ -21,6 +21,40 @@ $builder->addDefinitions([
         return new StorageService($settings['storage']['bundles_path']);
     },
 
+    'InviteStorageService' => function ($c) {
+        return new StorageService($c->get('settings')['storage']['invites_path']);
+    },
+
+    \Relay\Handler\Invite\CreateInviteHandler::class => function ($c) {
+        return new \Relay\Handler\Invite\CreateInviteHandler(
+            $c->get(\Relay\Repository\InviteRepository::class),
+            $c->get('InviteStorageService'),
+            $c->get('settings'),
+        );
+    },
+
+    \Relay\Handler\Invite\ListInvitesHandler::class => function ($c) {
+        return new \Relay\Handler\Invite\ListInvitesHandler(
+            $c->get(\Relay\Repository\InviteRepository::class),
+            $c->get('settings'),
+        );
+    },
+
+    \Relay\Handler\Invite\RevokeInviteHandler::class => function ($c) {
+        return new \Relay\Handler\Invite\RevokeInviteHandler(
+            $c->get(\Relay\Repository\InviteRepository::class),
+            $c->get('InviteStorageService'),
+        );
+    },
+
+    \Relay\Handler\Invite\FetchInviteHandler::class => function ($c) {
+        return new \Relay\Handler\Invite\FetchInviteHandler(
+            $c->get(\Relay\Repository\InviteRepository::class),
+            $c->get('InviteStorageService'),
+            $c->get('settings'),
+        );
+    },
+
     // Handlers that need settings
     \Relay\Handler\Auth\RegisterHandler::class => function ($c) {
         return new \Relay\Handler\Auth\RegisterHandler(
