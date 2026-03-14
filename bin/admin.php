@@ -280,7 +280,93 @@ function showBundles(\PDO $pdo, array $settings, bool $detailed): void
 
 function showSessions(\PDO $pdo, array $settings, bool $detailed): void
 {
-    echo "Sessions: (not yet implemented)\n";
+    // Summary stats
+    $stats = $pdo->query(
+        "SELECT
+            COUNT(*) as total,
+            MIN(created_at) as oldest,
+            MIN(expires_at) as soonest_expiry,
+            COUNT(DISTINCT account_id) as account_count
+         FROM sessions
+         WHERE expires_at > datetime('now')"
+    )->fetch();
+
+    $total = (int) $stats['total'];
+    $accountCount = (int) $stats['account_count'];
+
+    $oldestStr = '';
+    if ($stats['oldest']) {
+        $oldestStr = ', oldest: ' . relativeTime($stats['oldest'])
+            . ' (' . relativeTimeFuture($stats['soonest_expiry']) . ')';
+    }
+
+    echo "Sessions: {$total} active{$oldestStr}, {$accountCount} accounts with active sessions\n";
+
+    if (!$detailed) {
+        return;
+    }
+
+    // Per-account detail
+    $rows = $pdo->query(
+        "SELECT
+            a.email,
+            COUNT(s.token) as session_count,
+            MAX(s.created_at) as newest,
+            MIN(s.created_at) as oldest,
+            MIN(s.expires_at) as soonest_expiry
+         FROM sessions s
+         JOIN accounts a ON a.account_id = s.account_id
+         WHERE s.expires_at > datetime('now')
+         GROUP BY s.account_id
+         ORDER BY session_count DESC"
+    )->fetchAll();
+
+    $tableRows = [];
+    foreach ($rows as $row) {
+        $tableRows[] = [
+            'account'  => $row['email'],
+            'sessions' => (string) $row['session_count'],
+            'newest'   => relativeTime($row['newest']),
+            'oldest'   => relativeTime($row['oldest']),
+            'expires'  => relativeTimeFuture($row['soonest_expiry']),
+        ];
+    }
+
+    echo "\n";
+    printTable(['Account', 'Sessions', 'Newest', 'Oldest', 'Expires'], $tableRows);
+
+    // Challenge summary
+    $challenges = $pdo->query(
+        "SELECT context, COUNT(*) as cnt, MIN(created_at) as oldest
+         FROM challenges
+         WHERE expires_at > datetime('now')
+         GROUP BY context"
+    )->fetchAll();
+
+    $totalChallenges = array_sum(array_column($challenges, 'cnt'));
+    if ($totalChallenges > 0) {
+        $parts = array_map(fn($c) => "{$c['cnt']} {$c['context']}", $challenges);
+        $oldest = min(array_column($challenges, 'oldest'));
+        echo "\nChallenges: {$totalChallenges} pending (" . implode(', ', $parts)
+            . '), oldest: ' . relativeTime($oldest) . "\n";
+    } else {
+        echo "\nChallenges: 0 pending\n";
+    }
+
+    // Password reset summary
+    $resets = $pdo->query(
+        "SELECT COUNT(*) as cnt, MIN(expires_at) as soonest
+         FROM password_resets
+         WHERE used = 0 AND expires_at > datetime('now')"
+    )->fetch();
+
+    $resetCount = (int) $resets['cnt'];
+    if ($resetCount > 0) {
+        echo "Password resets: {$resetCount} unused, expires "
+            . relativeTimeFuture($resets['soonest']) . "\n";
+    } else {
+        echo "Password resets: 0 unused\n";
+    }
 }
 
 function showInvites(\PDO $pdo, array $settings, bool $detailed): void
