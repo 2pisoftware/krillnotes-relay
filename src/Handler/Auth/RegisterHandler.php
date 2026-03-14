@@ -29,6 +29,15 @@ final class RegisterHandler
         if (!$email || !$password || !$identityUuid || !$devicePublicKey) {
             return $this->json(400, ['error' => ['code' => 'MISSING_FIELDS', 'message' => 'email, password, identity_uuid, and device_public_key are required']]);
         }
+        // Validate device_public_key is a 64-char hex string (32 bytes = Ed25519 public key)
+        if (!ctype_xdigit($devicePublicKey) || strlen($devicePublicKey) !== 64) {
+            return $this->json(400, [
+                'error' => [
+                    'code' => 'INVALID_DEVICE_KEY',
+                    'message' => 'device_public_key must be a 64-character hex string (32-byte Ed25519 public key)',
+                ],
+            ]);
+        }
         if ($this->accounts->findByEmail($email) !== null) {
             return $this->json(409, ['error' => ['code' => 'EMAIL_EXISTS', 'message' => 'An account with this email already exists']]);
         }

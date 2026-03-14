@@ -32,6 +32,14 @@ final class RegisterVerifyHandler
         if (!$this->crypto->verifyNonce($challenge['nonce'], $nonceResponse)) {
             return $this->json(403, ['error' => ['code' => 'INVALID_NONCE', 'message' => 'Proof of possession failed']]);
         }
+        if (empty($challenge['account_id'])) {
+            return $this->json(500, [
+                'error' => [
+                    'code' => 'INTERNAL_ERROR',
+                    'message' => 'Challenge has no associated account',
+                ],
+            ]);
+        }
         $this->deviceKeys->markVerified($devicePublicKey);
         $this->challenges->delete((int) $challenge['id']);
         $token = $this->sessions->create($challenge['account_id'], $this->settings['auth']['session_lifetime_seconds']);

@@ -26,6 +26,15 @@ final class VerifyDeviceHandler
         if ($challenge === null) {
             return $this->json(404, ['error' => ['code' => 'NO_CHALLENGE', 'message' => 'No pending challenge for this device key']]);
         }
+        // Verify the challenge belongs to the authenticated account
+        if ($challenge['account_id'] !== $request->getAttribute('account_id')) {
+            return $this->json(403, [
+                'error' => [
+                    'code' => 'FORBIDDEN',
+                    'message' => 'Challenge does not belong to this account',
+                ],
+            ]);
+        }
         if (!$this->crypto->verifyNonce($challenge['nonce'], $nonceResponse)) {
             return $this->json(403, ['error' => ['code' => 'INVALID_NONCE', 'message' => 'Proof of possession failed']]);
         }

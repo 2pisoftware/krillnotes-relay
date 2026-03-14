@@ -23,6 +23,15 @@ final class AddDeviceHandler
         if (!$devicePublicKey) {
             return $this->json(400, ['error' => ['code' => 'MISSING_FIELDS', 'message' => 'device_public_key is required']]);
         }
+        // Validate device_public_key is a 64-char hex string (32 bytes = Ed25519 public key)
+        if (!ctype_xdigit($devicePublicKey) || strlen($devicePublicKey) !== 64) {
+            return $this->json(400, [
+                'error' => [
+                    'code' => 'INVALID_DEVICE_KEY',
+                    'message' => 'device_public_key must be a 64-character hex string (32-byte Ed25519 public key)',
+                ],
+            ]);
+        }
         $existing = $this->deviceKeys->findAccountByKey($devicePublicKey);
         if ($existing !== null) {
             return $this->json(409, ['error' => ['code' => 'KEY_EXISTS', 'message' => 'This device key is already registered']]);

@@ -84,13 +84,14 @@ $builder->addDefinitions([
         );
     },
 
-    // BundleRoutingService needs 4 dependencies
     \Relay\Service\BundleRoutingService::class => function ($c) {
+        $settings = $c->get('settings');
         return new \Relay\Service\BundleRoutingService(
             $c->get(\Relay\Repository\BundleRepository::class),
             $c->get(\Relay\Repository\DeviceKeyRepository::class),
             $c->get(\Relay\Repository\AccountRepository::class),
             $c->get(\Relay\Service\StorageService::class),
+            $settings['limits']['max_storage_per_account_bytes'],
         );
     },
 ]);

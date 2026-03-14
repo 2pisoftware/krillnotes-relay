@@ -11,6 +11,7 @@ final class BundleRoutingService
         private readonly DeviceKeyRepository $deviceKeys,
         private readonly AccountRepository $accounts,
         private readonly StorageService $storage,
+        private readonly int $maxStoragePerAccountBytes = 100 * 1024 * 1024,
     ) {}
     public function routeBundle(string $headerJson, string $payloadData): array
     {
@@ -32,6 +33,12 @@ final class BundleRoutingService
             $account = $this->deviceKeys->findAccountByKey($recipientKey);
             if ($account === null) { continue; }
             $size = strlen($payloadData);
+            // Enforce per-account storage quota
+            $fullAccount = $this->accounts->findById($account['account_id']);
+            $currentUsed = (int) ($fullAccount['storage_used'] ?? 0);
+            if ($currentUsed + $size > $this->maxStoragePerAccountBytes) {
+                continue; // Skip this recipient — quota exceeded
+            }
             $bundleId = \Ramsey\Uuid\Uuid::uuid4()->toString();
             $blobPath = $this->storage->store($bundleId, $payloadData);
             $this->bundles->createWithId($bundleId, $workspaceId, $senderKey, $recipientKey, $mode, $size, $blobPath);
