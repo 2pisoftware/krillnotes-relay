@@ -523,6 +523,25 @@ function dirFileCount(string $path): int
     return $count;
 }
 
+function resetPassword(\PDO $pdo, string $email, string $newPassword): void
+{
+    $stmt = $pdo->prepare('SELECT account_id FROM accounts WHERE email = ?');
+    $stmt->execute([$email]);
+    $row = $stmt->fetch();
+
+    if ($row === false) {
+        throw new \RuntimeException("No account found for email: {$email}");
+    }
+
+    $algo = defined('PASSWORD_ARGON2ID') ? PASSWORD_ARGON2ID : PASSWORD_BCRYPT;
+    $hash = password_hash($newPassword, $algo);
+
+    $stmt = $pdo->prepare('UPDATE accounts SET password_hash = ? WHERE account_id = ?');
+    $stmt->execute([$hash, $row['account_id']]);
+
+    echo "Password updated for {$email}\n";
+}
+
 function showHelp(): void
 {
     echo <<<HELP
@@ -531,13 +550,14 @@ function showHelp(): void
     Usage: php bin/admin.php [command]
 
     Commands:
-      (none)     Full dashboard (all sections)
-      accounts   Account details
-      bundles    Bundle/workspace details
-      sessions   Session, challenge, and reset details
-      invites    Invite details
-      health     System health — DB, storage, migrations, settings
-      help       Show this help
+      (none)          Full dashboard (all sections)
+      accounts        Account details
+      bundles         Bundle/workspace details
+      sessions        Session, challenge, and reset details
+      invites         Invite details
+      health          System health — DB, storage, migrations, settings
+      reset-password  Reset a user's password (reset-password <email> <new_password>)
+      help            Show this help
 
     HELP;
 }
@@ -582,6 +602,20 @@ switch ($command) {
         break;
     case 'help':
         showHelp();
+        break;
+    case 'reset-password':
+        $email = $argv[2] ?? '';
+        $newPassword = $argv[3] ?? '';
+        if (!$email || !$newPassword) {
+            echo "Usage: php bin/admin.php reset-password <email> <new_password>\n";
+            exit(1);
+        }
+        try {
+            resetPassword($pdo, $email, $newPassword);
+        } catch (\RuntimeException $e) {
+            echo $e->getMessage() . "\n";
+            exit(1);
+        }
         break;
     default:
         echo "Unknown command: {$command}\n\n";
