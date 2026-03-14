@@ -20,6 +20,9 @@ return function (App $app) {
     $app->post('/auth/reset-password/confirm',
         \Relay\Handler\Auth\ResetPasswordConfirmHandler::class);
 
+    // Public invite fetch
+    $app->get('/invites/{token}', \Relay\Handler\Invite\FetchInviteHandler::class);
+
     // Authenticated endpoints
     $app->group('', function (RouteCollectorProxy $group) {
         $group->post('/auth/logout',
@@ -52,5 +55,9 @@ return function (App $app) {
             \Relay\Handler\Bundle\DownloadBundleHandler::class);
         $group->delete('/bundles/{bundle_id}',
             \Relay\Handler\Bundle\DeleteBundleHandler::class);
+
+        $group->post('/invites',           \Relay\Handler\Invite\CreateInviteHandler::class);
+        $group->get('/invites',            \Relay\Handler\Invite\ListInvitesHandler::class);
+        $group->delete('/invites/{token}', \Relay\Handler\Invite\RevokeInviteHandler::class);
     })->add(AuthMiddleware::class);
 };
