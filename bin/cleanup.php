@@ -13,6 +13,7 @@ require __DIR__ . '/../vendor/autoload.php';
 use Relay\Database\Connection;
 use Relay\Database\Migrator;
 use Relay\Repository\BundleRepository;
+use Relay\Repository\InviteRepository;
 use Relay\Service\StorageService;
 
 $settings = require __DIR__ . '/../config/settings.php';
@@ -24,6 +25,9 @@ $pdo = Connection::create($settings['database']['path']);
 $bundles = new BundleRepository($pdo);
 $storage = new StorageService($settings['storage']['bundles_path']);
 
+$inviteRepo    = new InviteRepository($pdo);
+$inviteStorage = new StorageService($settings['storage']['invites_path']);
+
 // 1. Delete expired bundles
 $retentionDays = $settings['limits']['bundle_retention_days'];
 $cutoff = date('Y-m-d H:i:s', strtotime("-{$retentionDays} days"));
@@ -32,6 +36,14 @@ foreach ($expired as $bundle) {
     $storage->delete($bundle['blob_path']);
 }
 $expiredCount = count($expired);
+
+// 1b. Delete expired invites — blob first, then DB row (prevents orphaned blobs on interrupted run)
+$expiredInvites = $inviteRepo->deleteExpiredBefore(date('Y-m-d H:i:s'));
+foreach ($expiredInvites as $invite) {
+    $inviteStorage->delete($invite['blob_path']);
+}
+$inviteRepo->deleteByIds(array_column($expiredInvites, 'invite_id'));
+$expiredInviteCount = count($expiredInvites);
 
 // 2. Delete expired sessions
 $pdo->exec("DELETE FROM sessions WHERE expires_at <= datetime('now')");
@@ -69,4 +81,4 @@ $pdo->exec(
     )"
 );
 
-echo "Cleanup complete: {$expiredCount} expired bundles, {$deletedAccounts} deleted accounts\n";
+echo "Cleanup complete: {$expiredCount} expired bundles, {$expiredInviteCount} expired invites, {$deletedAccounts} deleted accounts\n";
