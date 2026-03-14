@@ -144,6 +144,35 @@ All request and response bodies are JSON. Authenticated endpoints require a `Bea
 | GET | `/bundles/{bundle_id}` | ✓ | Download a single bundle payload |
 | DELETE | `/bundles/{bundle_id}` | ✓ | Delete a bundle after successful sync |
 
+### Invites
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/invites` | ✓ | Upload an encrypted invite blob; returns a shareable URL |
+| GET | `/invites` | ✓ | List own invites with download counts |
+| DELETE | `/invites/{token}` | ✓ | Revoke an invite (owner only) |
+| GET | `/invites/{token}` | — | Fetch invite blob (JSON) or landing page (browser); no auth required |
+
+The fetch endpoint performs content negotiation on the `Accept` header: requests containing `application/json` receive the base64-encoded blob and `expires_at`; all other requests receive a minimal HTML landing page. Only JSON fetches increment the download counter.
+
+**Create request body:**
+```json
+{ "payload": "<base64 encoded encrypted blob>", "expires_at": "2026-06-14T00:00:00Z" }
+```
+`expires_at` must be in the future and at most 90 days from now. `payload` decoded size must not exceed the bundle size limit (10 MB).
+
+**Create response (201):**
+```json
+{ "data": { "invite_id": "…", "token": "…", "url": "https://swarm.krillnotes.org/invites/…", "expires_at": "…" } }
+```
+
+**Fetch response (200, JSON):**
+```json
+{ "data": { "payload": "<base64>", "expires_at": "…" } }
+```
+
+Error `410 Gone` is returned when the invite has expired; `404 Not Found` when the token does not exist.
+
 ## Registration flow (proof of possession)
 
 Registration is a two-step handshake to verify the client controls its Ed25519 private key:
