@@ -1,1 +1,8 @@
-.worktrees/
+/vendor/
+/composer.phar
+/storage/database/*.sqlite
+/storage/bundles/*
+!/storage/bundles/.gitkeep
+!/storage/database/.gitkeep
+.env
+.phpunit.cache/
