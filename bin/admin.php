@@ -429,7 +429,98 @@ function showInvites(\PDO $pdo, array $settings, bool $detailed): void
 
 function showHealth(\PDO $pdo, array $settings, bool $detailed): void
 {
-    echo "Health: (not yet implemented)\n";
+    $migrationsPath = dirname(__DIR__) . '/migrations';
+    $dbPath = $settings['database']['path'];
+    $bundlesPath = $settings['storage']['bundles_path'];
+    $invitesPath = $settings['storage']['invites_path'];
+
+    // Migration count
+    $migrationFiles = glob($migrationsPath . '/*.sql');
+    $totalMigrations = count($migrationFiles);
+    $appliedMigrations = (int) $pdo->query('SELECT COUNT(*) FROM _migrations')->fetchColumn();
+
+    $migrationStr = "{$appliedMigrations}/{$totalMigrations} migrations applied";
+    if ($appliedMigrations < $totalMigrations) {
+        $pending = $totalMigrations - $appliedMigrations;
+        $migrationStr .= " ⚠ {$pending} pending";
+    }
+
+    // Pragma checks
+    $journalMode = $pdo->query('PRAGMA journal_mode')->fetchColumn();
+    $foreignKeys = $pdo->query('PRAGMA foreign_keys')->fetchColumn();
+
+    // File sizes
+    $dbSize = file_exists($dbPath) ? filesize($dbPath) : 0;
+    $bundlesDiskSize = dirSize($bundlesPath);
+    $bundlesFileCount = dirFileCount($bundlesPath);
+    $invitesDiskSize = dirSize($invitesPath);
+    $invitesFileCount = dirFileCount($invitesPath);
+
+    // Dashboard line
+    $journalOk = strtolower($journalMode) === 'wal' ? 'WAL ok' : "journal: {$journalMode}";
+    echo "Health: DB " . humanBytes($dbSize) . ", blobs " . humanBytes($bundlesDiskSize)
+        . ", invites " . humanBytes($invitesDiskSize)
+        . ", {$migrationStr}, {$journalOk}\n";
+
+    if (!$detailed) {
+        return;
+    }
+
+    // Detail view
+    $journalCheck = strtolower($journalMode) === 'wal' ? 'WAL ✓' : "{$journalMode} ⚠";
+    $fkCheck = $foreignKeys ? 'ON ✓' : 'OFF ⚠';
+
+    echo "\n=== DATABASE ===\n";
+    echo "  File:          " . (file_exists($dbPath) ? "{$dbPath} (" . humanBytes($dbSize) . ")" : '(in-memory)') . "\n";
+    echo "  Journal:       {$journalCheck}\n";
+    echo "  Foreign keys:  {$fkCheck}\n";
+    echo "  Migrations:    {$appliedMigrations}/{$totalMigrations} applied";
+    if ($appliedMigrations < $totalMigrations) {
+        $pending = $totalMigrations - $appliedMigrations;
+        echo " ⚠ {$pending} pending";
+    }
+    echo "\n";
+
+    echo "\n=== STORAGE ===\n";
+    echo "  Bundles dir:   " . humanBytes($bundlesDiskSize) . " ({$bundlesFileCount} files)\n";
+    echo "  Invites dir:   " . humanBytes($invitesDiskSize) . " ({$invitesFileCount} files)\n";
+    echo "  Total disk:    " . humanBytes($bundlesDiskSize + $invitesDiskSize) . "\n";
+
+    echo "\n=== SETTINGS ===\n";
+    echo "  Bundle retention:     {$settings['limits']['bundle_retention_days']} days\n";
+    echo "  Session lifetime:     " . intdiv($settings['auth']['session_lifetime_seconds'], 86400) . " days\n";
+    echo "  Challenge lifetime:   " . intdiv($settings['auth']['challenge_lifetime_seconds'], 60) . " minutes\n";
+    echo "  Reset token lifetime: " . intdiv($settings['auth']['reset_token_lifetime_seconds'], 3600) . " hour(s)\n";
+    echo "  Max bundle size:      " . humanBytes($settings['limits']['max_bundle_size_bytes']) . "\n";
+    echo "  Max storage/account:  " . humanBytes($settings['limits']['max_storage_per_account_bytes']) . "\n";
+    echo "  Deletion grace:       {$settings['limits']['account_deletion_grace_days']} days\n";
+    echo "  Min poll interval:    {$settings['limits']['min_poll_interval_seconds']} seconds\n";
+}
+
+function dirSize(string $path): int
+{
+    if (!is_dir($path)) {
+        return 0;
+    }
+    $size = 0;
+    foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($path, \FilesystemIterator::SKIP_DOTS)) as $file) {
+        $size += $file->getSize();
+    }
+    return $size;
+}
+
+function dirFileCount(string $path): int
+{
+    if (!is_dir($path)) {
+        return 0;
+    }
+    $count = 0;
+    foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($path, \FilesystemIterator::SKIP_DOTS)) as $file) {
+        if ($file->isFile()) {
+            $count++;
+        }
+    }
+    return $count;
 }
 
 function showHelp(): void
