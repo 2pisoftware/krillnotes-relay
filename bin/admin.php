@@ -371,7 +371,60 @@ function showSessions(\PDO $pdo, array $settings, bool $detailed): void
 
 function showInvites(\PDO $pdo, array $settings, bool $detailed): void
 {
-    echo "Invites: (not yet implemented)\n";
+    // Summary stats (only non-expired invites)
+    $stats = $pdo->query(
+        "SELECT
+            COUNT(*) as total,
+            COALESCE(SUM(size_bytes), 0) as total_size,
+            COALESCE(SUM(download_count), 0) as total_downloads
+         FROM invites
+         WHERE expires_at > datetime('now')"
+    )->fetch();
+
+    $total = (int) $stats['total'];
+    $totalSize = (int) $stats['total_size'];
+    $totalDownloads = (int) $stats['total_downloads'];
+
+    echo "Invites: {$total} active, " . humanBytes($totalSize)
+        . " on disk, {$totalDownloads} total downloads\n";
+
+    if (!$detailed) {
+        return;
+    }
+
+    // Detail table
+    $rows = $pdo->query(
+        "SELECT
+            i.token,
+            a.email,
+            i.size_bytes,
+            i.download_count,
+            i.created_at,
+            i.expires_at
+         FROM invites i
+         JOIN accounts a ON a.account_id = i.account_id
+         WHERE i.expires_at > datetime('now')
+         ORDER BY i.created_at DESC"
+    )->fetchAll();
+
+    $tableRows = [];
+    foreach ($rows as $row) {
+        $tokenDisplay = strlen($row['token']) > 11
+            ? substr($row['token'], 0, 8) . '...'
+            : $row['token'];
+
+        $tableRows[] = [
+            'token'     => $tokenDisplay,
+            'account'   => $row['email'],
+            'size'      => humanBytes((int) $row['size_bytes']),
+            'downloads' => (string) $row['download_count'],
+            'created'   => relativeTime($row['created_at']),
+            'expires'   => relativeTimeFuture($row['expires_at']),
+        ];
+    }
+
+    echo "\n";
+    printTable(['Token', 'Account', 'Size', 'Downloads', 'Created', 'Expires'], $tableRows);
 }
 
 function showHealth(\PDO $pdo, array $settings, bool $detailed): void
