@@ -188,7 +188,94 @@ function showAccounts(\PDO $pdo, array $settings, bool $detailed): void
 
 function showBundles(\PDO $pdo, array $settings, bool $detailed): void
 {
-    echo "Bundles: (not yet implemented)\n";
+    $retentionDays = $settings['limits']['bundle_retention_days'];
+
+    // Summary stats
+    $stats = $pdo->query(
+        "SELECT
+            COUNT(*) as total,
+            COALESCE(SUM(size_bytes), 0) as total_size,
+            MIN(created_at) as oldest_created
+         FROM bundles"
+    )->fetch();
+
+    $total = (int) $stats['total'];
+    $totalSize = (int) $stats['total_size'];
+    $oldestCreated = $stats['oldest_created'];
+
+    $oldestStr = '';
+    if ($oldestCreated) {
+        $oldestStr = ', oldest: ' . relativeTime($oldestCreated);
+        // Compute expiry of oldest bundle
+        $expiresAt = date('Y-m-d H:i:s', strtotime($oldestCreated) + $retentionDays * 86400);
+        $oldestStr .= ' (' . relativeTimeFuture($expiresAt) . ')';
+    }
+
+    echo "Bundles: " . number_format($total) . " pending, "
+        . humanBytes($totalSize) . " on disk{$oldestStr}\n";
+
+    if (!$detailed) {
+        return;
+    }
+
+    // Per-workspace detail with first member lookup
+    $rows = $pdo->query(
+        "SELECT
+            b.workspace_id,
+            COUNT(*) as bundle_count,
+            SUM(b.size_bytes) as total_size,
+            MIN(b.created_at) as oldest,
+            MAX(b.created_at) as newest,
+            GROUP_CONCAT(b.mode) as modes
+         FROM bundles b
+         GROUP BY b.workspace_id
+         ORDER BY bundle_count DESC"
+    )->fetchAll();
+
+    $tableRows = [];
+    foreach ($rows as $row) {
+        // Find first member
+        $member = $pdo->prepare(
+            "SELECT a.email
+             FROM mailboxes m
+             JOIN accounts a ON a.account_id = m.account_id
+             WHERE m.workspace_id = ?
+             ORDER BY m.registered_at ASC
+             LIMIT 1"
+        );
+        $member->execute([$row['workspace_id']]);
+        $firstMember = $member->fetchColumn() ?: '(unknown)';
+
+        // Mode breakdown
+        $modeList = explode(',', $row['modes']);
+        $modeCounts = array_count_values($modeList);
+        $modeStr = implode(', ', array_map(
+            fn($count, $mode) => "{$count} {$mode}",
+            $modeCounts,
+            array_keys($modeCounts)
+        ));
+
+        // Truncate workspace ID
+        $wsDisplay = strlen($row['workspace_id']) > 11
+            ? substr($row['workspace_id'], 0, 8) . '...'
+            : $row['workspace_id'];
+
+        $tableRows[] = [
+            'workspace'   => $wsDisplay,
+            'firstMember' => $firstMember,
+            'bundles'     => (string) $row['bundle_count'],
+            'size'        => humanBytes((int) $row['total_size']),
+            'oldest'      => relativeTime($row['oldest']),
+            'newest'      => relativeTime($row['newest']),
+            'modes'       => $modeStr,
+        ];
+    }
+
+    echo "\n";
+    printTable(
+        ['Workspace', 'First Member', 'Bundles', 'Size', 'Oldest', 'Newest', 'Modes'],
+        $tableRows
+    );
 }
 
 function showSessions(\PDO $pdo, array $settings, bool $detailed): void
