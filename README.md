@@ -102,7 +102,23 @@ php bin/install.php
 php -S localhost:8080 -t public/ public/index.php
 ```
 
+## Admin tool
+
+A read-only CLI tool for inspecting the live database and storage:
+
+```bash
+php bin/admin.php              # Full dashboard (all sections)
+php bin/admin.php accounts     # Account list with device counts, storage, and flagged status
+php bin/admin.php bundles      # Pending bundles grouped by workspace
+php bin/admin.php sessions     # Active sessions, pending challenges, unused password resets
+php bin/admin.php invites      # Active invites with download counts
+php bin/admin.php health       # DB pragmas, migration status, storage sizes, and settings
+php bin/admin.php help         # Show usage
+```
+
 ## API overview
+
+> **Full reference:** [`docs/api.md`](docs/api.md) — every endpoint with request/response fields, error codes, and the PoP handshake protocol.
 
 All request and response bodies are JSON. Authenticated endpoints require a `Bearer` token in the `Authorization` header.
 

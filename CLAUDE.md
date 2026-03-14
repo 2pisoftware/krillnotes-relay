@@ -35,6 +35,14 @@ php vendor/bin/phpunit
 
 # Cleanup cron (expires bundles, sessions, flagged accounts)
 php bin/cleanup.php
+
+# Admin dashboard (read-only DB inspection)
+php bin/admin.php              # Full dashboard
+php bin/admin.php accounts     # Account details
+php bin/admin.php bundles      # Bundle/workspace details
+php bin/admin.php sessions     # Session/challenge/reset details
+php bin/admin.php invites      # Invite details
+php bin/admin.php health       # System health + settings
 ```
 
 ## Project layout
