@@ -8,7 +8,7 @@ final class StorageService
     {
         $subdir = substr($bundleId, 0, 2);
         $dir = $this->basePath . '/' . $subdir;
-        if (!is_dir($dir)) { mkdir($dir, 0750, true); }
+        if (!is_dir($dir)) { mkdir($dir, 0760, true); }
         $path = $dir . '/' . $bundleId . '.swarm';
         file_put_contents($path, $data, LOCK_EX);
         return $path;

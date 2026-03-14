@@ -23,7 +23,7 @@ $dirs = [
 
 foreach ($dirs as $dir) {
     if (!is_dir($dir)) {
-        mkdir($dir, 0750, true);
+        mkdir($dir, 0760, true);
         echo "Created: {$dir}\n";
     }
 }
