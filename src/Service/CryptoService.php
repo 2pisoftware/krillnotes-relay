@@ -43,8 +43,10 @@ final class CryptoService
         );
         $ciphertext = sodium_crypto_box($nonce, $boxNonce, $encryptKp);
 
-        // Wipe secret key from memory
-        sodium_memzero($serverSk);
+        // Wipe secret key from memory (no-op when ext-sodium unavailable)
+        if (extension_loaded('sodium')) {
+            sodium_memzero($serverSk);
+        }
 
         return [
             'encrypted_nonce' => bin2hex($boxNonce . $ciphertext),

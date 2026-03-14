@@ -1,0 +1,49 @@
+name: Deploy to FTP (dev)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # allow manual trigger from GitHub UI
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          extensions: pdo, pdo_sqlite, sodium
+          coverage: none
+
+      - name: Install Composer dependencies (production only)
+        run: composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+
+      - name: Deploy via FTP
+        uses: SamKirkland/FTP-Deploy-Action@4.3.4
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          # Destination path on the host — set this secret to e.g. /relay/ or /public_html/relay/
+          server-dir: ${{ secrets.FTP_SERVER_DIR }}
+          # Use FTPS if your host supports it (most do); fall back to ftp if not
+          protocol: ftps
+          port: 21
+          exclude: |
+            **/.git*
+            **/.git*/**
+            .worktrees/**
+            tests/**
+            phpunit.ini
+            composer.phar
+            docs/**
+            .phpunit.cache/**
+            storage/database/*.sqlite
+            storage/bundles/**
+            !storage/bundles/.gitkeep
+            !storage/database/.gitkeep
