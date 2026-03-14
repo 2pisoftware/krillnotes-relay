@@ -6,7 +6,7 @@ The relay is intentionally dumb: it never sees plaintext data. All bundles are e
 
 ## Requirements
 
-- PHP 8.1+
+- PHP 8.2+
 - `ext-sodium` (libsodium)
 - `ext-pdo_sqlite`
 - Composer
