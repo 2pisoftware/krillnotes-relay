@@ -31,9 +31,11 @@ Unknown commands print an error plus the help text.
 $command = $argv[1] ?? 'dashboard';
 ```
 
-Each section is a standalone function: `showAccounts($pdo, $settings)`, etc.
-The `dashboard` command calls all section functions, which detect dashboard vs
-detail mode via a parameter (or by checking whether they were called directly).
+Each section is a standalone function with signature
+`showAccounts(PDO $pdo, array $settings, bool $detailed)`, etc.
+The `dashboard` command calls each function with `$detailed = false` (summary
+line only). Subcommands call their function with `$detailed = true` (summary
+line plus detail table).
 
 ## Output Format Conventions
 
@@ -68,7 +70,10 @@ Accounts: 42 total, 3 flagged for deletion, 1.2 GB total storage used
 | alice@example.com | 2 (2 verified) | 54.2 MB / 100 MB (54%) | — | 30d ago | 2h ago |
 | bob@example.com | 1 (0 verified) | 0 B / 100 MB (0%) | yes (12d ago) | 45d ago | never |
 
-- Storage compared against `max_storage_per_account_bytes`.
+- Storage reads `accounts.storage_used` (the DB column, not a live disk total).
+  Note: this value is recalculated by `cleanup.php` and may be stale between
+  cleanup runs if bundles have been deleted since the last run. Compared against
+  `max_storage_per_account_bytes`.
 - Device counts from JOIN on `device_keys` (total + verified).
 - Flagged shows time since flagging (relevant to `account_deletion_grace_days`).
 - Last Poll from `last_poll_at`; `never` if null.
@@ -83,14 +88,20 @@ Bundles: 1,847 pending, 892.4 MB on disk, oldest: 28d ago (expires in 2d)
 
 **Detail table (per-workspace):**
 
-| Workspace | Created By | Bundles | Size | Oldest | Newest | Modes |
+| Workspace | First Member | Bundles | Size | Oldest | Newest | Modes |
 |---|---|---|---|---|---|---|
 | a3f8c2... | alice@example.com | 312 | 148.6 MB | 28d ago | 1h ago | 4 delta, 2 snapshot |
 | e91b07... | bob@example.com | 89 | 42.1 MB | 14d ago | 3d ago | 12 delta |
 
-- Created By: account with earliest `MIN(registered_at)` in `mailboxes` for
-  that workspace; `(unknown)` if mailbox was deleted.
-- Oldest bundle age flagged when within 3 days of `bundle_retention_days`.
+- First Member: account with earliest `MIN(registered_at)` in `mailboxes` for
+  that workspace; `(unknown)` if all mailbox rows for the workspace have been
+  deleted. Note: due to `ON DELETE CASCADE`, if the original creator's account
+  was deleted, this shows the earliest *surviving* member — not necessarily the
+  workspace creator. Column header is "First Member" (not "Created By") to
+  reflect this.
+- Oldest bundle expiry computed as `created_at + bundle_retention_days` (from
+  settings). Flagged when within 3 days of expiry. If already past the
+  retention threshold (cleanup hasn't run yet), displays as `expired Xd ago!`.
 - Modes: count breakdown by `mode` column (invite/accept/snapshot/delta).
 - Workspace IDs truncated to 8 chars.
 - Sorted by bundle count descending.
@@ -109,8 +120,9 @@ Sessions: 18 active, oldest: 28d ago (expires in 2d), 3 accounts with active ses
 | alice@example.com | 3 | 1h ago | 14d ago | in 16d |
 | bob@example.com | 1 | 5d ago | 5d ago | in 25d |
 
-- Expires compared against `session_lifetime_seconds`; flags sessions expiring
-  within 24h.
+- Expires computed directly from `sessions.expires_at` (not derived from
+  `session_lifetime_seconds`, since the setting only applies at creation time).
+  Flags sessions expiring within 24h.
 - Followed by challenge and password-reset summaries:
 
 ```
@@ -133,7 +145,9 @@ Invites: 12 active, 3.4 MB on disk, 47 total downloads
 | b91e07... | bob@example.com | 256 KB | 0 | 1h ago | in 7d |
 
 - Token truncated to 8 chars.
-- Flags invites expiring within 24h.
+- Expires computed directly from `invites.expires_at` (the lifetime is baked in
+  at creation time; there is no config-level `invite_lifetime_seconds` setting).
+  Flags invites expiring within 24h.
 - Sorted by `created_at` descending.
 
 ### Health
@@ -170,6 +184,8 @@ Min poll interval:    60 seconds
 
 - Pragma values read via `PRAGMA journal_mode` and `PRAGMA foreign_keys`.
 - Migration count: compare files in `migrations/` against `_migrations` rows.
+  If any migrations are pending (files without matching rows), display as
+  `6/8 applied ⚠ 2 pending` to flag the mismatch.
 - Blob file counts via `glob()` on storage directories.
 - Settings printed for quick reference.
 
