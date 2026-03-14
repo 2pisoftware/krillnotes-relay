@@ -1,0 +1,68 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Relay\Service;
+
+final class CryptoService
+{
+    /**
+     * Create a proof-of-possession challenge.
+     *
+     * Generates a random nonce, encrypts it to the client's Ed25519 public key
+     * (converted to X25519) using crypto_box with an ephemeral server keypair.
+     *
+     * Returns:
+     * - encrypted_nonce: hex(box_nonce || ciphertext)
+     * - server_public_key: hex(ephemeral X25519 public key)
+     * - plaintext_nonce: hex(nonce) — stored server-side for verification
+     *
+     * @param string $clientEdPkHex Client's Ed25519 public key (hex)
+     * @return array{encrypted_nonce: string, server_public_key: string, plaintext_nonce: string}
+     */
+    public function createChallenge(string $clientEdPkHex): array
+    {
+        $clientEdPk = hex2bin($clientEdPkHex);
+        $clientX25519Pk = sodium_crypto_sign_ed25519_pk_to_curve25519(
+            $clientEdPk
+        );
+
+        // Ephemeral server X25519 keypair
+        $serverKp = sodium_crypto_box_keypair();
+        $serverSk = sodium_crypto_box_secretkey($serverKp);
+        $serverPk = sodium_crypto_box_publickey($serverKp);
+
+        // Random challenge nonce (32 bytes)
+        $nonce = random_bytes(32);
+
+        // Encrypt: crypto_box(nonce, box_nonce, client_pk, server_sk)
+        $boxNonce = random_bytes(SODIUM_CRYPTO_BOX_NONCEBYTES);
+        $encryptKp = sodium_crypto_box_keypair_from_secretkey_and_publickey(
+            $serverSk,
+            $clientX25519Pk
+        );
+        $ciphertext = sodium_crypto_box($nonce, $boxNonce, $encryptKp);
+
+        // Wipe secret key from memory
+        sodium_memzero($serverSk);
+
+        return [
+            'encrypted_nonce' => bin2hex($boxNonce . $ciphertext),
+            'server_public_key' => bin2hex($serverPk),
+            'plaintext_nonce' => bin2hex($nonce),
+        ];
+    }
+
+    /**
+     * Constant-time comparison of nonce values.
+     */
+    public function verifyNonce(
+        string $expectedHex,
+        string $providedHex
+    ): bool {
+        if (strlen($expectedHex) !== strlen($providedHex)) {
+            return false;
+        }
+        return hash_equals($expectedHex, $providedHex);
+    }
+}
