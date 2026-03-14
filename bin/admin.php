@@ -128,7 +128,62 @@ function printTable(array $headers, array $rows): void
 
 function showAccounts(\PDO $pdo, array $settings, bool $detailed): void
 {
-    echo "Accounts: (not yet implemented)\n";
+    $maxStorage = $settings['limits']['max_storage_per_account_bytes'];
+
+    // Summary stats
+    $stats = $pdo->query(
+        "SELECT
+            COUNT(*) as total,
+            SUM(CASE WHEN flagged_for_deletion IS NOT NULL THEN 1 ELSE 0 END) as flagged,
+            SUM(storage_used) as total_storage
+         FROM accounts"
+    )->fetch();
+
+    $total = (int) $stats['total'];
+    $flagged = (int) $stats['flagged'];
+    $totalStorage = (int) $stats['total_storage'];
+
+    echo "Accounts: {$total} total, {$flagged} flagged for deletion, "
+        . humanBytes($totalStorage) . " total storage used\n";
+
+    if (!$detailed) {
+        return;
+    }
+
+    // Detail table
+    $rows = $pdo->query(
+        "SELECT
+            a.email,
+            a.storage_used,
+            a.flagged_for_deletion,
+            a.created_at,
+            a.last_poll_at,
+            COUNT(dk.id) as device_total,
+            SUM(CASE WHEN dk.verified = 1 THEN 1 ELSE 0 END) as device_verified
+         FROM accounts a
+         LEFT JOIN device_keys dk ON dk.account_id = a.account_id
+         GROUP BY a.account_id
+         ORDER BY a.created_at DESC"
+    )->fetchAll();
+
+    $tableRows = [];
+    foreach ($rows as $row) {
+        $flaggedStr = $row['flagged_for_deletion']
+            ? 'yes (' . relativeTime($row['flagged_for_deletion']) . ')'
+            : '—';
+
+        $tableRows[] = [
+            'email'    => $row['email'],
+            'devices'  => $row['device_total'] . ' (' . (int) $row['device_verified'] . ' verified)',
+            'storage'  => progressBar((int) $row['storage_used'], $maxStorage),
+            'flagged'  => $flaggedStr,
+            'created'  => relativeTime($row['created_at']),
+            'lastPoll' => relativeTime($row['last_poll_at']),
+        ];
+    }
+
+    echo "\n";
+    printTable(['Email', 'Devices', 'Storage', 'Flagged', 'Created', 'Last Poll'], $tableRows);
 }
 
 function showBundles(\PDO $pdo, array $settings, bool $detailed): void
