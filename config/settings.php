@@ -3,11 +3,13 @@
 declare(strict_types=1);
 
 return [
+    'base_url' => 'https://swarm.krillnotes.org',
     'database' => [
         'path' => dirname(__DIR__) . '/storage/database/relay.sqlite',
     ],
     'storage' => [
         'bundles_path' => dirname(__DIR__) . '/storage/bundles',
+        'invites_path' => dirname(__DIR__) . '/storage/invites',
     ],
     'auth' => [
         'session_lifetime_seconds' => 86400 * 30, // 30 days
