@@ -1,4 +1,4 @@
-# swarm-relay
+# krillnotes-relay
 
 A lightweight store-and-forward sync server for [KrillNotes](https://krillnotes.com). It routes encrypted sync bundles between any combination of peers — devices belonging to the same account, or collaborators sharing a workspace with different accounts. It also simplifies workspace invitations: the inviter uploads an invite package to the relay and shares a single URL; the recipient fetches it without needing a direct connection.
 
@@ -17,8 +17,8 @@ The relay is intentionally dumb: it never sees plaintext data. All bundles are e
 ### 1. Clone and install dependencies
 
 ```bash
-git clone https://github.com/your-org/swarm-relay.git
-cd swarm-relay
+git clone https://github.com/your-org/krillnotes-relay.git
+cd krillnotes-relay
 composer install --no-dev --optimize-autoloader
 ```
 
@@ -40,7 +40,7 @@ Point the document root to the `public/` directory, not the project root.
 
 ```nginx
 server {
-    root /path/to/swarm-relay/public;
+    root /path/to/krillnotes-relay/public;
     index index.php;
 
     location / {
@@ -68,7 +68,7 @@ The web server process must be able to read and write both directories. The proj
 Expired bundles, sessions, and flagged accounts are not cleaned up automatically. Add a cron entry to run the cleanup script periodically:
 
 ```cron
-0 * * * * /usr/bin/php /path/to/swarm-relay/bin/cleanup.php >> /var/log/relay-cleanup.log 2>&1
+0 * * * * /usr/bin/php /path/to/krillnotes-relay/bin/cleanup.php >> /var/log/relay-cleanup.log 2>&1
 ```
 
 ## Deployment to shared hosting via FTP

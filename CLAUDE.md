@@ -1,4 +1,4 @@
-# swarm-relay — Claude project instructions
+# krillnotes-relay — Claude project instructions
 
 ## What this is
 

@@ -1,5 +1,5 @@
 {
-    "name": "2pi/swarm-relay",
+    "name": "2pi/krillnotes-relay",
     "description": "KrillNotes Relay — lightweight store-and-forward sync service",
     "license": "MPL-2.0",
     "type": "project",

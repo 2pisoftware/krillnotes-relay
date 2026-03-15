@@ -1,4 +1,4 @@
-# swarm-relay API Reference
+# krillnotes-relay API Reference
 
 **Base URL:** `https://swarm.krillnotes.org`
 

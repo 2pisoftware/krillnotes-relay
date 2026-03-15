@@ -319,7 +319,7 @@ function showHealth(\PDO $pdo, array $settings, bool $detailed): void
 function showHelp(): void
 {
     echo <<<HELP
-    swarm-relay admin tool
+    krillnotes-relay admin tool
 
     Usage: php bin/admin.php [command]
 

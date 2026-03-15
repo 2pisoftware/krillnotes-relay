@@ -1,7 +1,7 @@
 # Invite Workflow Design
 
 **Date:** 2026-03-14
-**Project:** swarm-relay (KrillNotes Relay)
+**Project:** krillnotes-relay (KrillNotes Relay)
 **Status:** Approved
 
 ## Overview
