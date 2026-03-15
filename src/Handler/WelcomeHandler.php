@@ -67,6 +67,9 @@ class WelcomeHandler
         }
 
         .logo {
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
             width: 120px;
             height: 120px;
             border-radius: 10px;
