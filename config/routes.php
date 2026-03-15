@@ -8,6 +8,9 @@ use Relay\Middleware\AuthMiddleware;
 use Relay\Middleware\RateLimitMiddleware;
 
 return function (App $app) {
+    // Welcome page (browser visitors)
+    $app->get('/', \Relay\Handler\WelcomeHandler::class);
+
     // Public auth endpoints
     $app->post('/auth/register',
         \Relay\Handler\Auth\RegisterHandler::class);
