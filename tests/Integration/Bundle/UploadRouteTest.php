@@ -76,4 +76,126 @@ final class UploadRouteTest extends TestCase
         $result = $routing->routeBundle($header, 'payload');
         $this->assertSame(0, $result['routed_to']);
     }
+
+    public function test_routing_unverified_recipient_appears_in_skipped_unverified(): void
+    {
+        $accounts = new AccountRepository($this->pdo);
+        $deviceKeys = new DeviceKeyRepository($this->pdo);
+        $bundles = new BundleRepository($this->pdo);
+        $storage = new StorageService($this->storagePath);
+
+        $senderId = $accounts->create('sender@test.com', 'hash', 'uuid-s');
+        $deviceKeys->add($senderId, 'sender_key');
+        $deviceKeys->markVerified('sender_key');
+
+        $recipientId = $accounts->create('recipient@test.com', 'hash', 'uuid-r');
+        $deviceKeys->add($recipientId, 'unverified_key');
+        // deliberately NOT calling markVerified
+
+        $routing = new BundleRoutingService($bundles, $deviceKeys, $accounts, $storage);
+        $header = json_encode([
+            'workspace_id' => 'ws-001',
+            'sender_device_key' => 'sender_key',
+            'recipient_device_keys' => ['unverified_key'],
+            'mode' => 'delta',
+        ]);
+
+        $result = $routing->routeBundle($header, 'payload');
+
+        $this->assertSame(0, $result['routed_to']);
+        $this->assertContains('unverified_key', $result['skipped']['unverified']);
+        $this->assertEmpty($result['skipped']['unknown']);
+        $this->assertEmpty($result['skipped']['quota_exceeded']);
+    }
+
+    public function test_routing_unknown_recipient_appears_in_skipped_unknown(): void
+    {
+        $accounts = new AccountRepository($this->pdo);
+        $deviceKeys = new DeviceKeyRepository($this->pdo);
+        $bundles = new BundleRepository($this->pdo);
+        $storage = new StorageService($this->storagePath);
+
+        $senderId = $accounts->create('sender@test.com', 'hash', 'uuid-s');
+        $deviceKeys->add($senderId, 'sender_key');
+        $deviceKeys->markVerified('sender_key');
+
+        $routing = new BundleRoutingService($bundles, $deviceKeys, $accounts, $storage);
+        $header = json_encode([
+            'workspace_id' => 'ws-001',
+            'sender_device_key' => 'sender_key',
+            'recipient_device_keys' => ['completely_unknown_key'],
+            'mode' => 'delta',
+        ]);
+
+        $result = $routing->routeBundle($header, 'payload');
+
+        $this->assertSame(0, $result['routed_to']);
+        $this->assertContains('completely_unknown_key', $result['skipped']['unknown']);
+        $this->assertEmpty($result['skipped']['unverified']);
+        $this->assertEmpty($result['skipped']['quota_exceeded']);
+    }
+
+    public function test_routing_quota_exceeded_recipient_appears_in_skipped_quota_exceeded(): void
+    {
+        $accounts = new AccountRepository($this->pdo);
+        $deviceKeys = new DeviceKeyRepository($this->pdo);
+        $bundles = new BundleRepository($this->pdo);
+        $storage = new StorageService($this->storagePath);
+
+        $senderId = $accounts->create('sender@test.com', 'hash', 'uuid-s');
+        $deviceKeys->add($senderId, 'sender_key');
+        $deviceKeys->markVerified('sender_key');
+
+        $recipientId = $accounts->create('recipient@test.com', 'hash', 'uuid-r');
+        $deviceKeys->add($recipientId, 'recipient_key');
+        $deviceKeys->markVerified('recipient_key');
+
+        // Set max storage to 1 byte — any payload will exceed it
+        $routing = new BundleRoutingService($bundles, $deviceKeys, $accounts, $storage, 1);
+        $header = json_encode([
+            'workspace_id' => 'ws-001',
+            'sender_device_key' => 'sender_key',
+            'recipient_device_keys' => ['recipient_key'],
+            'mode' => 'delta',
+        ]);
+
+        $result = $routing->routeBundle($header, 'payload-exceeds-one-byte');
+
+        $this->assertSame(0, $result['routed_to']);
+        $this->assertContains('recipient_key', $result['skipped']['quota_exceeded']);
+        $this->assertEmpty($result['skipped']['unverified']);
+        $this->assertEmpty($result['skipped']['unknown']);
+    }
+
+    public function test_routing_success_returns_empty_skipped_arrays(): void
+    {
+        $accounts = new AccountRepository($this->pdo);
+        $deviceKeys = new DeviceKeyRepository($this->pdo);
+        $bundles = new BundleRepository($this->pdo);
+        $storage = new StorageService($this->storagePath);
+
+        $senderId = $accounts->create('sender@test.com', 'hash', 'uuid-s');
+        $deviceKeys->add($senderId, 'sender_key');
+        $deviceKeys->markVerified('sender_key');
+
+        $recipientId = $accounts->create('recipient@test.com', 'hash', 'uuid-r');
+        $deviceKeys->add($recipientId, 'recipient_key');
+        $deviceKeys->markVerified('recipient_key');
+
+        $routing = new BundleRoutingService($bundles, $deviceKeys, $accounts, $storage);
+        $header = json_encode([
+            'workspace_id' => 'ws-001',
+            'sender_device_key' => 'sender_key',
+            'recipient_device_keys' => ['recipient_key'],
+            'mode' => 'delta',
+        ]);
+
+        $result = $routing->routeBundle($header, 'payload');
+
+        $this->assertSame(1, $result['routed_to']);
+        $this->assertCount(1, $result['bundle_ids']);
+        $this->assertEmpty($result['skipped']['unverified']);
+        $this->assertEmpty($result['skipped']['unknown']);
+        $this->assertEmpty($result['skipped']['quota_exceeded']);
+    }
 }

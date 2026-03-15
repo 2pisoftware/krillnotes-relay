@@ -28,23 +28,25 @@ final class BundleRoutingService
             throw new \InvalidArgumentException("Invalid bundle mode: {$mode}");
         }
         $bundleIds = [];
+        $skipped = ['unverified' => [], 'unknown' => [], 'quota_exceeded' => []];
         foreach ($recipientKeys as $recipientKey) {
             if ($recipientKey === $senderKey) { continue; }
-            $account = $this->deviceKeys->findAccountByKey($recipientKey);
-            if ($account === null) { continue; }
+            $keyRecord = $this->deviceKeys->findByKey($recipientKey);
+            if ($keyRecord === null) { $skipped['unknown'][] = $recipientKey; continue; }
+            if (!(bool) $keyRecord['verified']) { $skipped['unverified'][] = $recipientKey; continue; }
             $size = strlen($payloadData);
-            // Enforce per-account storage quota
-            $fullAccount = $this->accounts->findById($account['account_id']);
+            $fullAccount = $this->accounts->findById($keyRecord['account_id']);
             $currentUsed = (int) ($fullAccount['storage_used'] ?? 0);
             if ($currentUsed + $size > $this->maxStoragePerAccountBytes) {
-                continue; // Skip this recipient — quota exceeded
+                $skipped['quota_exceeded'][] = $recipientKey;
+                continue;
             }
             $bundleId = \Ramsey\Uuid\Uuid::uuid4()->toString();
             $blobPath = $this->storage->store($bundleId, $payloadData);
             $this->bundles->createWithId($bundleId, $workspaceId, $senderKey, $recipientKey, $mode, $size, $blobPath);
-            $this->accounts->updateStorageUsed($account['account_id'], $size);
+            $this->accounts->updateStorageUsed($keyRecord['account_id'], $size);
             $bundleIds[] = $bundleId;
         }
-        return ['routed_to' => count($bundleIds), 'bundle_ids' => $bundleIds];
+        return ['routed_to' => count($bundleIds), 'bundle_ids' => $bundleIds, 'skipped' => $skipped];
     }
 }
