@@ -44,6 +44,9 @@ php bin/admin.php sessions     # Session/challenge/reset details
 php bin/admin.php invites      # Invite details
 php bin/admin.php health       # System health + settings
 php bin/admin.php reset-password <email> <new_password>  # Directly set a user's password
+
+# Full reset (deletes ALL data, keeps schema — interactive confirmation required)
+php bin/reset.php
 ```
 
 ## Project layout
