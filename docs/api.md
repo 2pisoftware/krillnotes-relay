@@ -474,12 +474,25 @@ Uploads a bundle and routes it to all specified recipient device keys that are r
 {
   "data": {
     "routed_to": 1,
-    "bundle_ids": ["b8f3c2d1-..."]
+    "bundle_ids": ["b8f3c2d1-..."],
+    "skipped": {
+      "unverified": [],
+      "unknown": [],
+      "quota_exceeded": []
+    }
   }
 }
 ```
 
-`routed_to` is the number of recipients a copy was created for. Recipients that exceed their storage quota are silently skipped.
+`routed_to` is the number of recipients a copy was created for. `skipped` is always present and contains three arrays of device keys that were not routed:
+
+| Key | Meaning | Suggested client message |
+|-----|---------|--------------------------|
+| `skipped.unverified` | Key is registered but the owner has not completed device verification | "Waiting for recipient to verify their device" |
+| `skipped.unknown` | Key is not registered with this relay | "Recipient has not registered with the relay" |
+| `skipped.quota_exceeded` | Recipient's account has reached its storage limit | "Recipient's storage is full" |
+
+The sender's own key is always excluded silently and is not counted in any `skipped` category.
 
 **Errors**
 
