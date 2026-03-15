@@ -212,4 +212,4 @@ Registration is a two-step handshake to verify the client controls its Ed25519 p
 
 ## License
 
-MPL-2.0
+MPL-2.0 — see [LICENSE](LICENSE).
