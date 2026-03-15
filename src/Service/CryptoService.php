@@ -20,12 +20,24 @@ final class CryptoService
      * @param string $clientEdPkHex Client's Ed25519 public key (hex)
      * @return array{encrypted_nonce: string, server_public_key: string, plaintext_nonce: string}
      */
+    /**
+     * @throws \InvalidArgumentException if the key is not a valid Ed25519 public key
+     */
     public function createChallenge(string $clientEdPkHex): array
     {
         $clientEdPk = hex2bin($clientEdPkHex);
-        $clientX25519Pk = sodium_crypto_sign_ed25519_pk_to_curve25519(
-            $clientEdPk
-        );
+        if ($clientEdPk === false || strlen($clientEdPk) !== 32) {
+            throw new \InvalidArgumentException('device_public_key is not valid hex or wrong length');
+        }
+        try {
+            $clientX25519Pk = sodium_crypto_sign_ed25519_pk_to_curve25519(
+                $clientEdPk
+            );
+        } catch (\SodiumException $e) {
+            throw new \InvalidArgumentException(
+                'device_public_key is not a valid Ed25519 public key: ' . $e->getMessage()
+            );
+        }
 
         // Ephemeral server X25519 keypair
         $serverKp = sodium_crypto_box_keypair();

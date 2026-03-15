@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 namespace Relay\Handler\Auth;
+use PDO;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Relay\Repository\AccountRepository;
@@ -17,6 +18,7 @@ final class RegisterHandler
         private readonly ChallengeRepository $challenges,
         private readonly AuthService $auth,
         private readonly CryptoService $crypto,
+        private readonly PDO $pdo,
         private readonly array $settings,
     ) {}
     public function __invoke(ServerRequestInterface $request): ResponseInterface
@@ -41,11 +43,31 @@ final class RegisterHandler
         if ($this->accounts->findByEmail($email) !== null) {
             return $this->json(409, ['error' => ['code' => 'EMAIL_EXISTS', 'message' => 'An account with this email already exists']]);
         }
-        $hash = $this->auth->hashPassword($password);
-        $accountId = $this->accounts->create($email, $hash, $identityUuid);
-        $this->deviceKeys->add($accountId, $devicePublicKey);
-        $challenge = $this->crypto->createChallenge($devicePublicKey);
-        $this->challenges->create($accountId, $devicePublicKey, $challenge['plaintext_nonce'], $challenge['server_public_key'], 'registration', $this->settings['auth']['challenge_lifetime_seconds']);
+
+        // Wrap account+device+challenge creation in a transaction so a failure
+        // at any step (e.g. invalid key for crypto challenge) doesn't leave
+        // orphan records in the database.
+        $this->pdo->beginTransaction();
+        try {
+            $hash = $this->auth->hashPassword($password);
+            $accountId = $this->accounts->create($email, $hash, $identityUuid);
+            $this->deviceKeys->add($accountId, $devicePublicKey);
+            $challenge = $this->crypto->createChallenge($devicePublicKey);
+            $this->challenges->create($accountId, $devicePublicKey, $challenge['plaintext_nonce'], $challenge['server_public_key'], 'registration', $this->settings['auth']['challenge_lifetime_seconds']);
+            $this->pdo->commit();
+        } catch (\InvalidArgumentException $e) {
+            $this->pdo->rollBack();
+            return $this->json(400, [
+                'error' => [
+                    'code' => 'INVALID_DEVICE_KEY',
+                    'message' => $e->getMessage(),
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            $this->pdo->rollBack();
+            throw $e;
+        }
+
         return $this->json(201, ['data' => ['account_id' => $accountId, 'challenge' => ['encrypted_nonce' => $challenge['encrypted_nonce'], 'server_public_key' => $challenge['server_public_key']]]]);
     }
     private function json(int $status, array $data): ResponseInterface

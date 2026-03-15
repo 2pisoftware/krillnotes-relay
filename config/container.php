@@ -63,6 +63,7 @@ $builder->addDefinitions([
             $c->get(\Relay\Repository\ChallengeRepository::class),
             $c->get(\Relay\Service\AuthService::class),
             $c->get(\Relay\Service\CryptoService::class),
+            $c->get(\PDO::class),
             $c->get('settings'),
         );
     },
