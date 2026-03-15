@@ -26,7 +26,7 @@ final class DeleteBundleHandler
             $response->getBody()->write(json_encode(['error' => ['code' => 'NOT_FOUND', 'message' => 'Bundle not found']]));
             return $response->withHeader('Content-Type', 'application/json');
         }
-        $ownerCheck = $this->deviceKeys->findAccountByKey($bundle['recipient_device_key']);
+        $ownerCheck = $this->deviceKeys->findByKey($bundle['recipient_device_key']);
         if ($ownerCheck === null || $ownerCheck['account_id'] !== $accountId) {
             $response = new Response(403);
             $response->getBody()->write(json_encode(['error' => ['code' => 'FORBIDDEN', 'message' => 'Not your bundle']]));

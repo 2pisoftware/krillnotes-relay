@@ -22,7 +22,7 @@ final class DownloadBundleHandler
         if ($bundle === null) {
             return $this->json(404, ['error' => ['code' => 'NOT_FOUND', 'message' => 'Bundle not found']]);
         }
-        $ownerCheck = $this->deviceKeys->findAccountByKey($bundle['recipient_device_key']);
+        $ownerCheck = $this->deviceKeys->findByKey($bundle['recipient_device_key']);
         if ($ownerCheck === null || $ownerCheck['account_id'] !== $accountId) {
             return $this->json(403, ['error' => ['code' => 'FORBIDDEN', 'message' => 'Not your bundle']]);
         }
