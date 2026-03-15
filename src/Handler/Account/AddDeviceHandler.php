@@ -32,7 +32,7 @@ final class AddDeviceHandler
                 ],
             ]);
         }
-        $existing = $this->deviceKeys->findAccountByKey($devicePublicKey);
+        $existing = $this->deviceKeys->findByKey($devicePublicKey);
         if ($existing !== null) {
             return $this->json(409, ['error' => ['code' => 'KEY_EXISTS', 'message' => 'This device key is already registered']]);
         }

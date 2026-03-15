@@ -242,4 +242,31 @@ final class ProofOfPossessionTest extends TestCase
         $error = json_decode((string) $response->getBody(), true)['error'];
         $this->assertSame('KEY_EXISTS', $error['code']);
     }
+
+    public function test_add_duplicate_unverified_key_returns_409(): void
+    {
+        $edKp = sodium_crypto_sign_keypair();
+        $edPk = sodium_crypto_sign_publickey($edKp);
+        $edPkHex = bin2hex($edPk);
+
+        // Add the key but do NOT call markVerified — it stays unverified
+        $this->deviceKeys->add($this->accountId, $edPkHex);
+
+        $handler = new AddDeviceHandler(
+            $this->deviceKeys,
+            $this->challenges,
+            $this->crypto,
+            $this->settings,
+        );
+
+        $request = (new ServerRequestFactory())->createServerRequest('POST', '/account/devices')
+            ->withAttribute('account_id', $this->accountId)
+            ->withParsedBody(['device_public_key' => $edPkHex]);
+
+        $response = $handler($request);
+
+        $this->assertSame(409, $response->getStatusCode());
+        $error = json_decode((string) $response->getBody(), true)['error'];
+        $this->assertSame('KEY_EXISTS', $error['code']);
+    }
 }
