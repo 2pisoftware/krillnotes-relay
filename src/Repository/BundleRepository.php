@@ -29,7 +29,8 @@ final class BundleRepository
         if (empty($deviceKeys)) { return []; }
         $placeholders = implode(',', array_fill(0, count($deviceKeys), '?'));
         if ($deviceId !== null) {
-            $stmt = $this->pdo->prepare("SELECT bundle_id, workspace_id, sender_device_key, mode, size_bytes, created_at FROM bundles WHERE recipient_device_key IN ({$placeholders}) AND recipient_device_id = ? ORDER BY created_at ASC");
+            // Return bundles addressed to this specific device OR bundles with no device routing (NULL = any device).
+            $stmt = $this->pdo->prepare("SELECT bundle_id, workspace_id, sender_device_key, mode, size_bytes, created_at FROM bundles WHERE recipient_device_key IN ({$placeholders}) AND (recipient_device_id = ? OR recipient_device_id IS NULL) ORDER BY created_at ASC");
             $stmt->execute([...$deviceKeys, $deviceId]);
         } else {
             $stmt = $this->pdo->prepare("SELECT bundle_id, workspace_id, sender_device_key, mode, size_bytes, created_at FROM bundles WHERE recipient_device_key IN ({$placeholders}) ORDER BY created_at ASC");
