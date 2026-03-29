@@ -89,6 +89,9 @@ $builder->addDefinitions([
             $c->get(\Relay\Repository\AccountRepository::class),
             $c->get(\Relay\Repository\SessionRepository::class),
             $c->get(\Relay\Service\AuthService::class),
+            $c->get(\Relay\Repository\DeviceKeyRepository::class),
+            $c->get(\Relay\Repository\ChallengeRepository::class),
+            $c->get(\Relay\Service\CryptoService::class),
             $c->get('settings'),
         );
     },

@@ -41,6 +41,9 @@ final class LoginFlowTest extends TestCase
             $this->accounts,
             $this->sessions,
             $this->auth,
+            new DeviceKeyRepository($this->pdo),
+            new ChallengeRepository($this->pdo),
+            new CryptoService(),
             $this->settings,
         );
     }
@@ -62,6 +65,7 @@ final class LoginFlowTest extends TestCase
             new ChallengeRepository($this->pdo),
             $this->auth,
             new CryptoService(),
+            $this->pdo,
             $this->settings,
         );
 
@@ -133,5 +137,109 @@ final class LoginFlowTest extends TestCase
         $this->assertSame(401, $response->getStatusCode());
         $error = json_decode((string) $response->getBody(), true)['error'];
         $this->assertSame('INVALID_CREDENTIALS', $error['code']);
+    }
+
+    public function test_login_with_unknown_device_key_returns_challenge(): void
+    {
+        $this->registerAccount('dan@example.com', 'securepass');
+
+        // Generate a SECOND Ed25519 keypair (simulates a new device)
+        $edKp2 = sodium_crypto_sign_keypair();
+        $edPk2 = sodium_crypto_sign_publickey($edKp2);
+        $edPk2Hex = bin2hex($edPk2);
+
+        $request = (new ServerRequestFactory())->createServerRequest('POST', '/auth/login')
+            ->withParsedBody([
+                'email' => 'dan@example.com',
+                'password' => 'securepass',
+                'device_public_key' => $edPk2Hex,
+            ]);
+        $response = ($this->loginHandler)($request);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $data = json_decode((string) $response->getBody(), true)['data'];
+        $this->assertArrayHasKey('session_token', $data);
+        $this->assertNotEmpty($data['session_token']);
+        $this->assertArrayHasKey('challenge', $data);
+        $this->assertArrayHasKey('encrypted_nonce', $data['challenge']);
+        $this->assertArrayHasKey('server_public_key', $data['challenge']);
+    }
+
+    public function test_login_with_verified_device_key_returns_no_challenge(): void
+    {
+        // Register eve@example.com with a specific key, complete PoP, then login
+        // with the same verified key — should NOT include a challenge.
+        $edKp = sodium_crypto_sign_keypair();
+        $edPk = sodium_crypto_sign_publickey($edKp);
+        $edPkHex = bin2hex($edPk);
+
+        // Register with this specific key
+        $edSk = sodium_crypto_sign_secretkey($edKp);
+        $registerHandler = new \Relay\Handler\Auth\RegisterHandler(
+            $this->accounts,
+            new DeviceKeyRepository($this->pdo),
+            new ChallengeRepository($this->pdo),
+            $this->auth,
+            new CryptoService(),
+            $this->pdo,
+            $this->settings,
+        );
+        $regRequest = (new ServerRequestFactory())->createServerRequest('POST', '/auth/register')
+            ->withParsedBody([
+                'email' => 'eve@example.com',
+                'password' => 'mypassword',
+                'identity_uuid' => 'id-uuid-eve',
+                'device_public_key' => $edPkHex,
+            ]);
+        $regResponse = $registerHandler($regRequest);
+        $regData = json_decode((string) $regResponse->getBody(), true)['data'];
+
+        // Complete PoP verification
+        $clientX25519Sk = sodium_crypto_sign_ed25519_sk_to_curve25519($edSk);
+        $serverX25519Pk = hex2bin($regData['challenge']['server_public_key']);
+        $blob = hex2bin($regData['challenge']['encrypted_nonce']);
+        $boxNonce = substr($blob, 0, SODIUM_CRYPTO_BOX_NONCEBYTES);
+        $ciphertext = substr($blob, SODIUM_CRYPTO_BOX_NONCEBYTES);
+        $decryptKp = sodium_crypto_box_keypair_from_secretkey_and_publickey($clientX25519Sk, $serverX25519Pk);
+        $plaintext = sodium_crypto_box_open($ciphertext, $boxNonce, $decryptKp);
+
+        $verifyHandler = new \Relay\Handler\Auth\RegisterVerifyHandler(
+            new ChallengeRepository($this->pdo),
+            new DeviceKeyRepository($this->pdo),
+            $this->sessions,
+            new CryptoService(),
+            $this->settings,
+        );
+        $verifyRequest = (new ServerRequestFactory())->createServerRequest('POST', '/auth/register/verify')
+            ->withParsedBody(['device_public_key' => $edPkHex, 'nonce' => bin2hex($plaintext)]);
+        $verifyHandler($verifyRequest);
+
+        // Now login with the same verified key — should NOT include a challenge.
+        $request = (new ServerRequestFactory())->createServerRequest('POST', '/auth/login')
+            ->withParsedBody([
+                'email' => 'eve@example.com',
+                'password' => 'mypassword',
+                'device_public_key' => $edPkHex,
+            ]);
+        $response = ($this->loginHandler)($request);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $data = json_decode((string) $response->getBody(), true)['data'];
+        $this->assertArrayHasKey('session_token', $data);
+        $this->assertArrayNotHasKey('challenge', $data);
+    }
+
+    public function test_login_without_device_key_returns_no_challenge(): void
+    {
+        $this->registerAccount('frank@example.com', 'frankpass');
+
+        $request = (new ServerRequestFactory())->createServerRequest('POST', '/auth/login')
+            ->withParsedBody(['email' => 'frank@example.com', 'password' => 'frankpass']);
+        $response = ($this->loginHandler)($request);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $data = json_decode((string) $response->getBody(), true)['data'];
+        $this->assertArrayHasKey('session_token', $data);
+        $this->assertArrayNotHasKey('challenge', $data);
     }
 }

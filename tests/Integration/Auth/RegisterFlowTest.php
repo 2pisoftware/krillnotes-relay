@@ -42,6 +42,7 @@ final class RegisterFlowTest extends TestCase
             new ChallengeRepository($this->pdo),
             new AuthService(),
             new CryptoService(),
+            $this->pdo,
             $this->settings,
         );
         $request = (new ServerRequestFactory())->createServerRequest('POST', '/auth/register')
