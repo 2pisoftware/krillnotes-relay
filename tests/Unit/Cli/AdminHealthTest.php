@@ -61,7 +61,7 @@ final class AdminHealthTest extends TestCase
 
         $this->assertStringContainsString('=== DATABASE ===', $output);
         $this->assertStringContainsString('Migrations:', $output);
-        // All 8 migrations should be applied
-        $this->assertStringContainsString('8/8 applied', $output);
+        // All 9 migrations should be applied
+        $this->assertStringContainsString('9/9 applied', $output);
     }
 }

@@ -41,6 +41,8 @@ return function (App $app) {
             \Relay\Handler\Account\GetAccountHandler::class);
         $group->delete('/account',
             \Relay\Handler\Account\DeleteAccountHandler::class);
+        $group->get('/account/devices',
+            \Relay\Handler\Account\ListDevicesHandler::class);
         $group->post('/account/devices',
             \Relay\Handler\Account\AddDeviceHandler::class);
         $group->post('/account/devices/verify',

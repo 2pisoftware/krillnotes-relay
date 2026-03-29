@@ -22,12 +22,13 @@ final class ListBundlesHandler
     public function __invoke(ServerRequestInterface $request): ResponseInterface
     {
         $accountId = $request->getAttribute('account_id');
+        $deviceId = $request->getQueryParams()['device_id'] ?? null;
         $keys = $this->deviceKeys->listForAccount($accountId);
         $verifiedKeys = array_column(
             array_filter($keys, fn($k) => (bool) $k['verified']),
             'device_public_key'
         );
-        $bundles = $this->bundles->listForRecipientKeys($verifiedKeys);
+        $bundles = $this->bundles->listForRecipientKeys($verifiedKeys, $deviceId !== '' ? $deviceId : null);
         $response = new Response(200);
         $response->getBody()->write(json_encode([
             'data' => array_map(fn($b) => [

@@ -45,7 +45,11 @@ final class VerifyDeviceHandler
         if (!$this->crypto->verifyNonce($challenge['nonce'], $nonceResponse)) {
             return $this->json(403, ['error' => ['code' => 'INVALID_NONCE', 'message' => 'Proof of possession failed']]);
         }
-        $this->deviceKeys->markVerified($devicePublicKey);
+        $deviceId = ($body['device_id'] ?? '') ?: null;
+        if ($deviceId !== null && strlen($deviceId) > 128) {
+            $deviceId = null; // silently ignore oversized values
+        }
+        $this->deviceKeys->markVerified($devicePublicKey, $deviceId);
         $this->challenges->delete((int) $challenge['id']);
         return $this->json(200, ['data' => ['ok' => true]]);
     }
