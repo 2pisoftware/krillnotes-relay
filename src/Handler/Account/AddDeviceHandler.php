@@ -44,6 +44,9 @@ final class AddDeviceHandler
             return $this->json(409, ['error' => ['code' => 'KEY_EXISTS', 'message' => 'This device key is already registered']]);
         }
         $deviceId = ($body['device_id'] ?? '') ?: null;
+        if ($deviceId !== null && strlen($deviceId) > 128) {
+            $deviceId = null; // silently ignore oversized values
+        }
         $this->deviceKeys->add($accountId, $devicePublicKey, $deviceId);
         $challenge = $this->crypto->createChallenge($devicePublicKey);
         $this->challenges->create($accountId, $devicePublicKey, $challenge['plaintext_nonce'], $challenge['server_public_key'], 'device_add', $this->settings['auth']['challenge_lifetime_seconds']);
