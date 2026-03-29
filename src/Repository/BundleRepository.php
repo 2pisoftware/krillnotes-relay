@@ -13,10 +13,10 @@ use Ramsey\Uuid\Uuid;
 final class BundleRepository
 {
     public function __construct(private readonly PDO $pdo) {}
-    public function createWithId(string $bundleId, string $workspaceId, string $senderDeviceKey, string $recipientDeviceKey, string $mode, int $sizeBytes, string $blobPath): void
+    public function createWithId(string $bundleId, string $workspaceId, string $senderDeviceKey, string $recipientDeviceKey, string $mode, int $sizeBytes, string $blobPath, ?string $recipientDeviceId = null): void
     {
-        $stmt = $this->pdo->prepare('INSERT INTO bundles (bundle_id, workspace_id, sender_device_key, recipient_device_key, mode, size_bytes, blob_path) VALUES (?, ?, ?, ?, ?, ?, ?)');
-        $stmt->execute([$bundleId, $workspaceId, $senderDeviceKey, $recipientDeviceKey, $mode, $sizeBytes, $blobPath]);
+        $stmt = $this->pdo->prepare('INSERT INTO bundles (bundle_id, workspace_id, sender_device_key, recipient_device_key, mode, size_bytes, blob_path, recipient_device_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+        $stmt->execute([$bundleId, $workspaceId, $senderDeviceKey, $recipientDeviceKey, $mode, $sizeBytes, $blobPath, $recipientDeviceId]);
     }
     public function findById(string $bundleId): ?array
     {
@@ -24,12 +24,17 @@ final class BundleRepository
         $stmt->execute([$bundleId]);
         return $stmt->fetch() ?: null;
     }
-    public function listForRecipientKeys(array $deviceKeys): array
+    public function listForRecipientKeys(array $deviceKeys, ?string $deviceId = null): array
     {
         if (empty($deviceKeys)) { return []; }
         $placeholders = implode(',', array_fill(0, count($deviceKeys), '?'));
-        $stmt = $this->pdo->prepare("SELECT bundle_id, workspace_id, sender_device_key, mode, size_bytes, created_at FROM bundles WHERE recipient_device_key IN ({$placeholders}) ORDER BY created_at ASC");
-        $stmt->execute($deviceKeys);
+        if ($deviceId !== null) {
+            $stmt = $this->pdo->prepare("SELECT bundle_id, workspace_id, sender_device_key, mode, size_bytes, created_at FROM bundles WHERE recipient_device_key IN ({$placeholders}) AND recipient_device_id = ? ORDER BY created_at ASC");
+            $stmt->execute([...$deviceKeys, $deviceId]);
+        } else {
+            $stmt = $this->pdo->prepare("SELECT bundle_id, workspace_id, sender_device_key, mode, size_bytes, created_at FROM bundles WHERE recipient_device_key IN ({$placeholders}) ORDER BY created_at ASC");
+            $stmt->execute($deviceKeys);
+        }
         return $stmt->fetchAll();
     }
     public function delete(string $bundleId): ?string

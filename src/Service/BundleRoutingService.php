@@ -29,6 +29,7 @@ final class BundleRoutingService
         $workspaceId = $header['workspace_id'];
         $senderKey = $header['sender_device_key'];
         $recipientKeys = $header['recipient_device_keys'];
+        $recipientDeviceIds = $header['recipient_device_ids'] ?? [];
         $mode = $header['mode'] ?? 'delta';
         $validModes = ['invite', 'accept', 'snapshot', 'delta'];
         if (!in_array($mode, $validModes, true)) {
@@ -36,7 +37,7 @@ final class BundleRoutingService
         }
         $bundleIds = [];
         $skipped = ['unverified' => [], 'unknown' => [], 'quota_exceeded' => []];
-        foreach ($recipientKeys as $recipientKey) {
+        foreach ($recipientKeys as $i => $recipientKey) {
             if ($recipientKey === $senderKey) { continue; }
             $keyRecord = $this->deviceKeys->findByKey($recipientKey);
             if ($keyRecord === null) { $skipped['unknown'][] = $recipientKey; continue; }
@@ -48,9 +49,10 @@ final class BundleRoutingService
                 $skipped['quota_exceeded'][] = $recipientKey;
                 continue;
             }
+            $recipientDeviceId = is_array($recipientDeviceIds) && isset($recipientDeviceIds[$i]) ? $recipientDeviceIds[$i] : null;
             $bundleId = \Ramsey\Uuid\Uuid::uuid4()->toString();
             $blobPath = $this->storage->store($bundleId, $payloadData);
-            $this->bundles->createWithId($bundleId, $workspaceId, $senderKey, $recipientKey, $mode, $size, $blobPath);
+            $this->bundles->createWithId($bundleId, $workspaceId, $senderKey, $recipientKey, $mode, $size, $blobPath, $recipientDeviceId);
             $this->accounts->updateStorageUsed($keyRecord['account_id'], $size);
             $bundleIds[] = $bundleId;
         }

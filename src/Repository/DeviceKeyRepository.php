@@ -18,22 +18,31 @@ final class DeviceKeyRepository
 
     public function add(
         string $accountId,
-        string $devicePublicKey
+        string $devicePublicKey,
+        ?string $deviceId = null
     ): void {
         $stmt = $this->pdo->prepare(
-            'INSERT INTO device_keys (account_id, device_public_key)
-             VALUES (?, ?)'
+            'INSERT INTO device_keys (account_id, device_public_key, device_id)
+             VALUES (?, ?, ?)'
         );
-        $stmt->execute([$accountId, $devicePublicKey]);
+        $stmt->execute([$accountId, $devicePublicKey, $deviceId]);
     }
 
-    public function markVerified(string $devicePublicKey): void
+    public function markVerified(string $devicePublicKey, ?string $deviceId = null): void
     {
-        $stmt = $this->pdo->prepare(
-            'UPDATE device_keys SET verified = 1
-             WHERE device_public_key = ?'
-        );
-        $stmt->execute([$devicePublicKey]);
+        if ($deviceId !== null) {
+            $stmt = $this->pdo->prepare(
+                'UPDATE device_keys SET verified = 1, device_id = ?
+                 WHERE device_public_key = ?'
+            );
+            $stmt->execute([$deviceId, $devicePublicKey]);
+        } else {
+            $stmt = $this->pdo->prepare(
+                'UPDATE device_keys SET verified = 1
+                 WHERE device_public_key = ?'
+            );
+            $stmt->execute([$devicePublicKey]);
+        }
     }
 
     public function findByKey(string $devicePublicKey): ?array
@@ -61,10 +70,28 @@ final class DeviceKeyRepository
     public function listForAccount(string $accountId): array
     {
         $stmt = $this->pdo->prepare(
-            'SELECT device_public_key, verified, added_at
+            'SELECT device_public_key, device_id, verified, added_at
              FROM device_keys WHERE account_id = ?'
         );
         $stmt->execute([$accountId]);
+        return $stmt->fetchAll();
+    }
+
+    public function listVerifiedForAccount(string $accountId, ?string $excludeKey = null): array
+    {
+        if ($excludeKey !== null) {
+            $stmt = $this->pdo->prepare(
+                'SELECT device_public_key, device_id FROM device_keys
+                 WHERE account_id = ? AND verified = 1 AND device_public_key != ?'
+            );
+            $stmt->execute([$accountId, $excludeKey]);
+        } else {
+            $stmt = $this->pdo->prepare(
+                'SELECT device_public_key, device_id FROM device_keys
+                 WHERE account_id = ? AND verified = 1'
+            );
+            $stmt->execute([$accountId]);
+        }
         return $stmt->fetchAll();
     }
 
