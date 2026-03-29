@@ -49,7 +49,7 @@ final class BundleRoutingService
                 $skipped['quota_exceeded'][] = $recipientKey;
                 continue;
             }
-            $recipientDeviceId = is_array($recipientDeviceIds) && isset($recipientDeviceIds[$i]) ? $recipientDeviceIds[$i] : null;
+            $recipientDeviceId = ($recipientDeviceIds[$i] ?? '') ?: null;
             $bundleId = \Ramsey\Uuid\Uuid::uuid4()->toString();
             $blobPath = $this->storage->store($bundleId, $payloadData);
             $this->bundles->createWithId($bundleId, $workspaceId, $senderKey, $recipientKey, $mode, $size, $blobPath, $recipientDeviceId);

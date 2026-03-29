@@ -48,7 +48,7 @@ final class DeviceKeyRepository
     public function findByKey(string $devicePublicKey): ?array
     {
         $stmt = $this->pdo->prepare(
-            'SELECT device_public_key, account_id, verified, added_at
+            'SELECT device_public_key, device_id, account_id, verified, added_at
              FROM device_keys WHERE device_public_key = ?'
         );
         $stmt->execute([$devicePublicKey]);
