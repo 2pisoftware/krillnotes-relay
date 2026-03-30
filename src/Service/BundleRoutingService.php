@@ -40,6 +40,12 @@ final class BundleRoutingService
         foreach ($recipientKeys as $i => $recipientKey) {
             if ($recipientKey === $senderKey) { continue; }
             $keyRecord = $this->deviceKeys->findByKey($recipientKey);
+            // Fallback: if key is unknown but we have a device_id, look up the device by ID.
+            // This handles delta sync where the identity key is used for encryption
+            // but routing needs the per-device relay key.
+            if ($keyRecord === null && !empty($recipientDeviceIds[$i])) {
+                $keyRecord = $this->deviceKeys->findByDeviceId($recipientDeviceIds[$i]);
+            }
             if ($keyRecord === null) { $skipped['unknown'][] = $recipientKey; continue; }
             if (!(bool) $keyRecord['verified']) { $skipped['unverified'][] = $recipientKey; continue; }
             $size = strlen($payloadData);

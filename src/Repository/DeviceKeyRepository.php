@@ -55,6 +55,16 @@ final class DeviceKeyRepository
         return $stmt->fetch() ?: null;
     }
 
+    public function findByDeviceId(string $deviceId): ?array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT device_public_key, device_id, account_id, verified, added_at
+             FROM device_keys WHERE device_id = ?'
+        );
+        $stmt->execute([$deviceId]);
+        return $stmt->fetch() ?: null;
+    }
+
     public function findAccountByKey(string $devicePublicKey): ?array
     {
         $stmt = $this->pdo->prepare(
