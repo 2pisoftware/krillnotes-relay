@@ -48,6 +48,10 @@ final class BundleRoutingService
             }
             if ($keyRecord === null) { $skipped['unknown'][] = $recipientKey; continue; }
             if (!(bool) $keyRecord['verified']) { $skipped['unverified'][] = $recipientKey; continue; }
+            // Use the device's registered key for storage so ListBundles can find it.
+            // When the device-ID fallback was used, $recipientKey is the identity key
+            // which isn't in the device_keys table — $keyRecord has the actual registered key.
+            $storageKey = $keyRecord['device_public_key'];
             $size = strlen($payloadData);
             $fullAccount = $this->accounts->findById($keyRecord['account_id']);
             $currentUsed = (int) ($fullAccount['storage_used'] ?? 0);
@@ -58,7 +62,7 @@ final class BundleRoutingService
             $recipientDeviceId = ($recipientDeviceIds[$i] ?? '') ?: null;
             $bundleId = \Ramsey\Uuid\Uuid::uuid4()->toString();
             $blobPath = $this->storage->store($bundleId, $payloadData);
-            $this->bundles->createWithId($bundleId, $workspaceId, $senderKey, $recipientKey, $mode, $size, $blobPath, $recipientDeviceId);
+            $this->bundles->createWithId($bundleId, $workspaceId, $senderKey, $storageKey, $mode, $size, $blobPath, $recipientDeviceId);
             $this->accounts->updateStorageUsed($keyRecord['account_id'], $size);
             $bundleIds[] = $bundleId;
         }
