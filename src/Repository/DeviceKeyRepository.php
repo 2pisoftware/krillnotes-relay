@@ -57,11 +57,13 @@ final class DeviceKeyRepository
 
     public function findByDeviceId(string $deviceId): ?array
     {
+        // Exact match first, then prefix match to handle short device IDs
+        // (e.g. "device-abc" matches "device-abc:identity:uuid").
         $stmt = $this->pdo->prepare(
             'SELECT device_public_key, device_id, account_id, verified, added_at
-             FROM device_keys WHERE device_id = ?'
+             FROM device_keys WHERE device_id = ? OR device_id LIKE ? || \':%\' LIMIT 1'
         );
-        $stmt->execute([$deviceId]);
+        $stmt->execute([$deviceId, $deviceId]);
         return $stmt->fetch() ?: null;
     }
 
