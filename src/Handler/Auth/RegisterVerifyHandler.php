@@ -47,7 +47,11 @@ final class RegisterVerifyHandler
                 ],
             ]);
         }
-        $this->deviceKeys->markVerified($devicePublicKey);
+        $deviceId = ($body['device_id'] ?? '') ?: null;
+        if ($deviceId !== null && strlen($deviceId) > 128) {
+            $deviceId = null;
+        }
+        $this->deviceKeys->markVerified($devicePublicKey, $deviceId);
         $this->challenges->delete((int) $challenge['id']);
         $token = $this->sessions->create($challenge['account_id'], $this->settings['auth']['session_lifetime_seconds']);
         return $this->json(200, ['data' => ['account_id' => $challenge['account_id'], 'session_token' => $token]]);
