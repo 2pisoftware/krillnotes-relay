@@ -55,16 +55,56 @@ final class DeviceKeyRepository
         return $stmt->fetch() ?: null;
     }
 
-    public function findByDeviceId(string $deviceId): ?array
+    public function findByDeviceId(string $deviceId, ?string $excludeKey = null): ?array
     {
-        // Exact match first, then prefix match to handle short device IDs
-        // (e.g. "device-abc" matches "device-abc:identity:uuid").
+        // 1. Exact match first, then prefix match to handle short device IDs
+        //    (e.g. "device-abc" matches "device-abc:identity:uuid").
         $stmt = $this->pdo->prepare(
             'SELECT device_public_key, device_id, account_id, verified, added_at
              FROM device_keys WHERE device_id = ? OR device_id LIKE ? || \':%\' LIMIT 1'
         );
         $stmt->execute([$deviceId, $deviceId]);
-        return $stmt->fetch() ?: null;
+        $result = $stmt->fetch() ?: null;
+        if ($result !== null) {
+            return $result;
+        }
+
+        // 2. Cross-format match: the client may send a workspace composite device_id
+        //    ("{identity_uuid}:{device_uuid}") while the relay stores relay-format
+        //    ("device-{hash}:identity:{identity_uuid}"), or vice versa.
+        //    Extract the identity UUID from either format and find the OTHER device
+        //    for that identity (excluding the sender's key to avoid self-routing).
+        $identityUuid = null;
+        if (preg_match('/^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}):/', $deviceId, $m)) {
+            // Workspace composite: "{identity_uuid}:{device_uuid}" → first segment
+            $identityUuid = $m[1];
+        } elseif (preg_match('/:identity:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/', $deviceId, $m)) {
+            // Relay format: "device-{hash}:identity:{identity_uuid}" → last segment
+            $identityUuid = $m[1];
+        }
+        if ($identityUuid !== null) {
+            if ($excludeKey !== null) {
+                $stmt = $this->pdo->prepare(
+                    'SELECT device_public_key, device_id, account_id, verified, added_at
+                     FROM device_keys
+                     WHERE device_id LIKE \'%\' || ? || \'%\'
+                       AND device_public_key != ?
+                     LIMIT 1'
+                );
+                $stmt->execute([$identityUuid, $excludeKey]);
+            } else {
+                $stmt = $this->pdo->prepare(
+                    'SELECT device_public_key, device_id, account_id, verified, added_at
+                     FROM device_keys
+                     WHERE device_id LIKE \'%\' || ? || \'%\'
+                     LIMIT 1'
+                );
+                $stmt->execute([$identityUuid]);
+            }
+            return $stmt->fetch() ?: null;
+        }
+
+        return null;
     }
 
     public function findAccountByKey(string $devicePublicKey): ?array
