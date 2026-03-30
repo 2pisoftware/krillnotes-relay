@@ -50,11 +50,15 @@ final class LoginHandler
         // Conditional device registration: if client sent a device_public_key,
         // check whether it's already registered and verified.
         $devicePublicKey = $body['device_public_key'] ?? '';
+        $deviceId = ($body['device_id'] ?? '') ?: null;
+        if ($deviceId !== null && strlen($deviceId) > 128) {
+            $deviceId = null;
+        }
         if ($devicePublicKey !== '' && ctype_xdigit($devicePublicKey) && strlen($devicePublicKey) === 64) {
             $existing = $this->deviceKeys->findByKey($devicePublicKey);
             if ($existing === null) {
                 // Unknown key — insert as unverified + issue PoP challenge.
-                $this->deviceKeys->add($account['account_id'], $devicePublicKey);
+                $this->deviceKeys->add($account['account_id'], $devicePublicKey, $deviceId);
                 $challenge = $this->crypto->createChallenge($devicePublicKey);
                 $this->challenges->create(
                     $account['account_id'],
@@ -85,8 +89,12 @@ final class LoginHandler
                     'encrypted_nonce' => $challenge['encrypted_nonce'],
                     'server_public_key' => $challenge['server_public_key'],
                 ];
+            } else {
+                // Verified key on our account — update device_id if provided and missing.
+                if ($deviceId !== null && empty($existing['device_id'])) {
+                    $this->deviceKeys->markVerified($devicePublicKey, $deviceId);
+                }
             }
-            // else: verified — no challenge needed
         }
 
         return $this->json(200, ['data' => $responseData]);
