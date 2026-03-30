@@ -29,25 +29,11 @@ final class BundleRepository
         if (empty($deviceKeys)) { return []; }
         $placeholders = implode(',', array_fill(0, count($deviceKeys), '?'));
         if ($deviceId !== null) {
-            // Extract identity UUID for cross-format device_id matching.
-            // Workspace format: "{identity_uuid}:{device_uuid}" → first segment.
-            // Relay format: "device-{hash}:identity:{identity_uuid}" → last segment.
-            $identityUuid = null;
-            if (preg_match('/^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}):/', $deviceId, $m)) {
-                $identityUuid = $m[1];
-            } elseif (preg_match('/:identity:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/', $deviceId, $m)) {
-                $identityUuid = $m[1];
-            }
-            // Return bundles addressed to this device OR with no device routing (NULL).
-            // Cross-format: also match if stored recipient_device_id contains the same
-            // identity UUID (handles workspace ↔ relay device_id format mismatches).
-            if ($identityUuid !== null) {
-                $stmt = $this->pdo->prepare("SELECT bundle_id, workspace_id, sender_device_key, mode, size_bytes, created_at FROM bundles WHERE recipient_device_key IN ({$placeholders}) AND (recipient_device_id = ? OR recipient_device_id IS NULL OR recipient_device_id LIKE '%' || ? || '%') ORDER BY created_at ASC");
-                $stmt->execute([...$deviceKeys, $deviceId, $identityUuid]);
-            } else {
-                $stmt = $this->pdo->prepare("SELECT bundle_id, workspace_id, sender_device_key, mode, size_bytes, created_at FROM bundles WHERE recipient_device_key IN ({$placeholders}) AND (recipient_device_id = ? OR recipient_device_id IS NULL) ORDER BY created_at ASC");
-                $stmt->execute([...$deviceKeys, $deviceId]);
-            }
+            // Return bundles addressed to this specific device OR bundles with no device routing (NULL = any device).
+            // The routing service now stores the relay's own device_id (from device_keys.device_id)
+            // so this exact match works even when the client sent a different format.
+            $stmt = $this->pdo->prepare("SELECT bundle_id, workspace_id, sender_device_key, mode, size_bytes, created_at FROM bundles WHERE recipient_device_key IN ({$placeholders}) AND (recipient_device_id = ? OR recipient_device_id IS NULL) ORDER BY created_at ASC");
+            $stmt->execute([...$deviceKeys, $deviceId]);
         } else {
             $stmt = $this->pdo->prepare("SELECT bundle_id, workspace_id, sender_device_key, mode, size_bytes, created_at FROM bundles WHERE recipient_device_key IN ({$placeholders}) ORDER BY created_at ASC");
             $stmt->execute($deviceKeys);
