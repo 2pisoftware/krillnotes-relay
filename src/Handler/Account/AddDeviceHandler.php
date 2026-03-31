@@ -41,6 +41,13 @@ final class AddDeviceHandler
         }
         $existing = $this->deviceKeys->findByKey($devicePublicKey);
         if ($existing !== null) {
+            // If the key belongs to the same account and is NOT yet verified,
+            // re-issue a PoP challenge so the client can complete verification.
+            if ($existing['account_id'] === $accountId && !(bool) $existing['verified']) {
+                $challenge = $this->crypto->createChallenge($devicePublicKey);
+                $this->challenges->create($accountId, $devicePublicKey, $challenge['plaintext_nonce'], $challenge['server_public_key'], 'device_add', $this->settings['auth']['challenge_lifetime_seconds']);
+                return $this->json(200, ['data' => ['challenge' => ['encrypted_nonce' => $challenge['encrypted_nonce'], 'server_public_key' => $challenge['server_public_key']]]]);
+            }
             return $this->json(409, ['error' => ['code' => 'KEY_EXISTS', 'message' => 'This device key is already registered']]);
         }
         $deviceId = ($body['device_id'] ?? '') ?: null;
