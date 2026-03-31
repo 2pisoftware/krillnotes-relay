@@ -59,12 +59,14 @@ final class BundleRoutingService
                 $skipped['quota_exceeded'][] = $recipientKey;
                 continue;
             }
-            // Use the relay's own device_id (from the matched device key record) so that
-            // bundle listing can do an exact match when the recipient device polls.
-            // The client may send a workspace-format device_id that doesn't match the
-            // relay-format device_id used during polling — using the relay's stored
-            // value ensures consistency.
-            $recipientDeviceId = $keyRecord['device_id'] ?? (($recipientDeviceIds[$i] ?? '') ?: null);
+            // Use the relay's own device_id from the matched key record.
+            // - Device-specific keys have a stored device_id → pin the bundle to that device.
+            // - Identity-level keys have device_id = NULL → leave NULL so ALL devices
+            //   on the account can see it (the OR IS NULL clause in ListBundles).
+            // Do NOT fall through to the client-provided recipientDeviceIds here: the
+            // client may send a workspace-format ID that doesn't match the relay's
+            // polling format, causing the bundle to become invisible.
+            $recipientDeviceId = $keyRecord['device_id'];
             $bundleId = \Ramsey\Uuid\Uuid::uuid4()->toString();
             $blobPath = $this->storage->store($bundleId, $payloadData);
             $this->bundles->createWithId($bundleId, $workspaceId, $senderKey, $storageKey, $mode, $size, $blobPath, $recipientDeviceId);
