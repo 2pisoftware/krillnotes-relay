@@ -58,7 +58,7 @@ final class DeviceIdTest extends TestCase
         $this->deviceKeys->markVerified('sender_key_hex');
 
         $recipientId = $this->accounts->create('recipient@test.com', 'hash', 'uuid-r');
-        $this->deviceKeys->add($recipientId, 'recipient_key_hex');
+        $this->deviceKeys->add($recipientId, 'recipient_key_hex', 'device-id-abc123');
         $this->deviceKeys->markVerified('recipient_key_hex');
 
         $routing = new BundleRoutingService($this->bundles, $this->deviceKeys, $this->accounts, $this->storage);
@@ -66,14 +66,13 @@ final class DeviceIdTest extends TestCase
             'workspace_id' => 'ws-001',
             'sender_device_key' => 'sender_key_hex',
             'recipient_device_keys' => ['recipient_key_hex'],
-            'recipient_device_ids' => ['device-id-abc123'],
             'mode' => 'delta',
         ]);
 
         $result = $routing->routeBundle($header, 'payload');
         $this->assertSame(1, $result['routed_to']);
 
-        // Verify device_id was stored
+        // Verify device_id was stored from the key record
         $bundleId = $result['bundle_ids'][0];
         $bundle = $this->bundles->findById($bundleId);
         $this->assertSame('device-id-abc123', $bundle['recipient_device_id']);
@@ -113,39 +112,39 @@ final class DeviceIdTest extends TestCase
         $this->deviceKeys->markVerified('sender_key_hex');
 
         $recipientId = $this->accounts->create('recipient@test.com', 'hash', 'uuid-r');
-        $this->deviceKeys->add($recipientId, 'recipient_key_hex');
-        $this->deviceKeys->markVerified('recipient_key_hex');
+        $this->deviceKeys->add($recipientId, 'recipient_key_A', 'device-A');
+        $this->deviceKeys->markVerified('recipient_key_A');
+        $this->deviceKeys->add($recipientId, 'recipient_key_B', 'device-B');
+        $this->deviceKeys->markVerified('recipient_key_B');
 
         $routing = new BundleRoutingService($this->bundles, $this->deviceKeys, $this->accounts, $this->storage);
 
-        // Bundle for device-A
+        // Bundle routed to key A (device-A)
         $routing->routeBundle(json_encode([
             'workspace_id' => 'ws-001',
             'sender_device_key' => 'sender_key_hex',
-            'recipient_device_keys' => ['recipient_key_hex'],
-            'recipient_device_ids' => ['device-A'],
+            'recipient_device_keys' => ['recipient_key_A'],
             'mode' => 'delta',
         ]), 'payload-for-A');
 
-        // Bundle for device-B
+        // Bundle routed to key B (device-B)
         $routing->routeBundle(json_encode([
             'workspace_id' => 'ws-001',
             'sender_device_key' => 'sender_key_hex',
-            'recipient_device_keys' => ['recipient_key_hex'],
-            'recipient_device_ids' => ['device-B'],
+            'recipient_device_keys' => ['recipient_key_B'],
             'mode' => 'delta',
         ]), 'payload-for-B');
 
         // Filter by device-A: should return only 1 bundle
-        $forA = $this->bundles->listForRecipientKeys(['recipient_key_hex'], 'device-A');
+        $forA = $this->bundles->listForRecipientKeys(['recipient_key_A', 'recipient_key_B'], 'device-A');
         $this->assertCount(1, $forA);
 
         // Filter by device-B: should return only 1 bundle
-        $forB = $this->bundles->listForRecipientKeys(['recipient_key_hex'], 'device-B');
+        $forB = $this->bundles->listForRecipientKeys(['recipient_key_A', 'recipient_key_B'], 'device-B');
         $this->assertCount(1, $forB);
 
         // No filter: should return both
-        $all = $this->bundles->listForRecipientKeys(['recipient_key_hex']);
+        $all = $this->bundles->listForRecipientKeys(['recipient_key_A', 'recipient_key_B']);
         $this->assertCount(2, $all);
     }
 

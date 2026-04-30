@@ -250,7 +250,7 @@ final class ProofOfPossessionTest extends TestCase
         $this->assertSame('KEY_EXISTS', $error['code']);
     }
 
-    public function test_add_duplicate_unverified_key_returns_409(): void
+    public function test_add_duplicate_unverified_key_reissues_challenge(): void
     {
         $edKp = sodium_crypto_sign_keypair();
         $edPk = sodium_crypto_sign_publickey($edKp);
@@ -272,8 +272,10 @@ final class ProofOfPossessionTest extends TestCase
 
         $response = $handler($request);
 
-        $this->assertSame(409, $response->getStatusCode());
-        $error = json_decode((string) $response->getBody(), true)['error'];
-        $this->assertSame('KEY_EXISTS', $error['code']);
+        $this->assertSame(200, $response->getStatusCode());
+        $data = json_decode((string) $response->getBody(), true)['data'];
+        $this->assertArrayHasKey('challenge', $data);
+        $this->assertArrayHasKey('encrypted_nonce', $data['challenge']);
+        $this->assertArrayHasKey('server_public_key', $data['challenge']);
     }
 }
