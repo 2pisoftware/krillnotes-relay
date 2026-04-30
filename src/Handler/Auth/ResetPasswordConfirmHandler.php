@@ -12,6 +12,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Relay\Repository\AccountRepository;
 use Relay\Repository\PasswordResetRepository;
+use Relay\Repository\SessionRepository;
 use Relay\Service\AuthService;
 use Slim\Psr7\Response;
 final class ResetPasswordConfirmHandler
@@ -19,6 +20,7 @@ final class ResetPasswordConfirmHandler
     public function __construct(
         private readonly PasswordResetRepository $resets,
         private readonly AccountRepository $accounts,
+        private readonly SessionRepository $sessions,
         private readonly AuthService $auth,
     ) {}
     public function __invoke(ServerRequestInterface $request): ResponseInterface
@@ -36,6 +38,7 @@ final class ResetPasswordConfirmHandler
         $hash = $this->auth->hashPassword($newPassword);
         $this->accounts->updatePassword($reset['account_id'], $hash);
         $this->resets->markUsed($token);
+        $this->sessions->deleteForAccount($reset['account_id']);
         return $this->json(200, ['data' => ['ok' => true]]);
     }
     private function json(int $status, array $data): ResponseInterface

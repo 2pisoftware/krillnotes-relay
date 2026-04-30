@@ -45,6 +45,13 @@ final class SessionRepository
         $stmt->execute([$token]);
     }
 
+    public function deleteForAccount(string $accountId): int
+    {
+        $stmt = $this->pdo->prepare('DELETE FROM sessions WHERE account_id = ?');
+        $stmt->execute([$accountId]);
+        return $stmt->rowCount();
+    }
+
     public function deleteExpired(): int
     {
         return $this->pdo->exec(
