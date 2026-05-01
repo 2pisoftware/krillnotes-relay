@@ -1,0 +1,12 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+
+  test:
+    build:
+      context: .
+      target: test
+    entrypoint: ["php", "vendor/bin/phpunit"]
+    profiles: ["test"]
