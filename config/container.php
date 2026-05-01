@@ -135,6 +135,7 @@ $builder->addDefinitions([
             $c->get(\Relay\Repository\DeviceKeyRepository::class),
             $c->get(\Relay\Repository\AccountRepository::class),
             $c->get(\Relay\Service\StorageService::class),
+            $c->get(\PDO::class),
             $settings['limits']['max_storage_per_account_bytes'],
         );
     },

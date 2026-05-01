@@ -15,9 +15,13 @@ final class StorageService
     {
         $subdir = substr($bundleId, 0, 2);
         $dir = $this->basePath . '/' . $subdir;
-        if (!is_dir($dir)) { mkdir($dir, 0760, true); }
+        if (!is_dir($dir) && !mkdir($dir, 0760, true) && !is_dir($dir)) {
+            throw new \RuntimeException("Failed to create storage directory: {$dir}");
+        }
         $path = $dir . '/' . $bundleId . '.swarm';
-        file_put_contents($path, $data, LOCK_EX);
+        if (file_put_contents($path, $data, LOCK_EX) === false) {
+            throw new \RuntimeException("Failed to write bundle to disk: {$path}");
+        }
         return $path;
     }
     public function read(string $blobPath): ?string

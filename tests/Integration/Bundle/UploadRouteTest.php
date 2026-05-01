@@ -50,7 +50,7 @@ final class UploadRouteTest extends TestCase
         $recipientId = $accounts->create('recipient@test.com', 'hash', 'uuid-r');
         $deviceKeys->add($recipientId, 'recipient_key_hex');
         $deviceKeys->markVerified('recipient_key_hex');
-        $routing = new BundleRoutingService($bundles, $deviceKeys, $accounts, $storage);
+        $routing = new BundleRoutingService($bundles, $deviceKeys, $accounts, $storage, $this->pdo);
         $header = json_encode([
             'workspace_id' => 'ws-001',
             'sender_device_key' => 'sender_key_hex',
@@ -73,7 +73,7 @@ final class UploadRouteTest extends TestCase
         $senderId = $accounts->create('sender@test.com', 'hash', 'uuid-s');
         $deviceKeys->add($senderId, 'sender_key');
         $deviceKeys->markVerified('sender_key');
-        $routing = new BundleRoutingService($bundles, $deviceKeys, $accounts, $storage);
+        $routing = new BundleRoutingService($bundles, $deviceKeys, $accounts, $storage, $this->pdo);
         $header = json_encode([
             'workspace_id' => 'ws-001',
             'sender_device_key' => 'sender_key',
@@ -99,7 +99,7 @@ final class UploadRouteTest extends TestCase
         $deviceKeys->add($recipientId, 'unverified_key');
         // deliberately NOT calling markVerified
 
-        $routing = new BundleRoutingService($bundles, $deviceKeys, $accounts, $storage);
+        $routing = new BundleRoutingService($bundles, $deviceKeys, $accounts, $storage, $this->pdo);
         $header = json_encode([
             'workspace_id' => 'ws-001',
             'sender_device_key' => 'sender_key',
@@ -126,7 +126,7 @@ final class UploadRouteTest extends TestCase
         $deviceKeys->add($senderId, 'sender_key');
         $deviceKeys->markVerified('sender_key');
 
-        $routing = new BundleRoutingService($bundles, $deviceKeys, $accounts, $storage);
+        $routing = new BundleRoutingService($bundles, $deviceKeys, $accounts, $storage, $this->pdo);
         $header = json_encode([
             'workspace_id' => 'ws-001',
             'sender_device_key' => 'sender_key',
@@ -158,7 +158,7 @@ final class UploadRouteTest extends TestCase
         $deviceKeys->markVerified('recipient_key');
 
         // Set max storage to 1 byte — any payload will exceed it
-        $routing = new BundleRoutingService($bundles, $deviceKeys, $accounts, $storage, 1);
+        $routing = new BundleRoutingService($bundles, $deviceKeys, $accounts, $storage, $this->pdo, 1);
         $header = json_encode([
             'workspace_id' => 'ws-001',
             'sender_device_key' => 'sender_key',
@@ -189,7 +189,7 @@ final class UploadRouteTest extends TestCase
         $deviceKeys->add($recipientId, 'recipient_key');
         $deviceKeys->markVerified('recipient_key');
 
-        $routing = new BundleRoutingService($bundles, $deviceKeys, $accounts, $storage);
+        $routing = new BundleRoutingService($bundles, $deviceKeys, $accounts, $storage, $this->pdo);
         $header = json_encode([
             'workspace_id' => 'ws-001',
             'sender_device_key' => 'sender_key',
