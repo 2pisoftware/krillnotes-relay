@@ -42,7 +42,6 @@ $builder->addDefinitions([
     \Relay\Handler\Invite\ListInvitesHandler::class => function ($c) {
         return new \Relay\Handler\Invite\ListInvitesHandler(
             $c->get(\Relay\Repository\InviteRepository::class),
-            $c->get('settings'),
         );
     },
 
@@ -57,7 +56,6 @@ $builder->addDefinitions([
         return new \Relay\Handler\Invite\FetchInviteHandler(
             $c->get(\Relay\Repository\InviteRepository::class),
             $c->get('InviteStorageService'),
-            $c->get('settings'),
         );
     },
 

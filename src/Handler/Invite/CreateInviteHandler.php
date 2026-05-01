@@ -63,7 +63,8 @@ final class CreateInviteHandler
             throw $e;
         }
 
-        $baseUrl = rtrim($this->settings['base_url'], '/');
+        $uri = $request->getUri();
+        $baseUrl = $uri->getScheme() . '://' . $uri->getAuthority();
         return $this->json(201, ['data' => [
             'invite_id'  => $inviteId,
             'token'      => $token,

@@ -17,13 +17,13 @@ final class ListInvitesHandler
 {
     public function __construct(
         private readonly InviteRepository $invites,
-        private readonly array $settings,
     ) {}
 
     public function __invoke(ServerRequestInterface $request): ResponseInterface
     {
         $accountId = $request->getAttribute('account_id');
-        $baseUrl   = rtrim($this->settings['base_url'], '/');
+        $uri       = $request->getUri();
+        $baseUrl   = $uri->getScheme() . '://' . $uri->getAuthority();
         $rows      = $this->invites->listForAccount($accountId);
 
         $data = array_map(fn($row) => [

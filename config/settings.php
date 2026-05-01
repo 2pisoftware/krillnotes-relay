@@ -9,7 +9,6 @@
 declare(strict_types=1);
 
 return [
-    'base_url' => 'https://swarm.krillnotes.org',
     'database' => [
         'path' => dirname(__DIR__) . '/storage/database/relay.sqlite',
     ],
