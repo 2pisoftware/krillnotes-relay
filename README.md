@@ -102,6 +102,21 @@ php bin/install.php
 php -S localhost:8080 -t public/ public/index.php
 ```
 
+## Docker quick start
+
+No PHP installation required — just Docker.
+
+```bash
+# Start the relay at localhost:8080 (auto-initializes the DB)
+docker compose up --build
+
+# Run the test suite
+docker compose run test
+
+# Stop and remove containers
+docker compose down
+```
+
 ## Admin tool
 
 A read-only CLI tool for inspecting the live database and storage:

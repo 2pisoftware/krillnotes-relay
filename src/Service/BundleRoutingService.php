@@ -8,6 +8,7 @@
 
 declare(strict_types=1);
 namespace Relay\Service;
+use PDO;
 use Relay\Repository\BundleRepository;
 use Relay\Repository\DeviceKeyRepository;
 use Relay\Repository\AccountRepository;
@@ -18,6 +19,7 @@ final class BundleRoutingService
         private readonly DeviceKeyRepository $deviceKeys,
         private readonly AccountRepository $accounts,
         private readonly StorageService $storage,
+        private readonly PDO $pdo,
         private readonly int $maxStoragePerAccountBytes = 100 * 1024 * 1024,
     ) {}
     public function routeBundle(string $headerJson, string $payloadData): array
@@ -69,8 +71,18 @@ final class BundleRoutingService
             $recipientDeviceId = $keyRecord['device_id'];
             $bundleId = \Ramsey\Uuid\Uuid::uuid4()->toString();
             $blobPath = $this->storage->store($bundleId, $payloadData);
-            $this->bundles->createWithId($bundleId, $workspaceId, $senderKey, $storageKey, $mode, $size, $blobPath, $recipientDeviceId);
-            $this->accounts->updateStorageUsed($keyRecord['account_id'], $size);
+            try {
+                $this->pdo->beginTransaction();
+                $this->bundles->createWithId($bundleId, $workspaceId, $senderKey, $storageKey, $mode, $size, $blobPath, $recipientDeviceId);
+                $this->accounts->updateStorageUsed($keyRecord['account_id'], $size);
+                $this->pdo->commit();
+            } catch (\Throwable $e) {
+                if ($this->pdo->inTransaction()) {
+                    $this->pdo->rollBack();
+                }
+                $this->storage->delete($blobPath);
+                throw $e;
+            }
             $bundleIds[] = $bundleId;
         }
         return ['routed_to' => count($bundleIds), 'bundle_ids' => $bundleIds, 'skipped' => $skipped];

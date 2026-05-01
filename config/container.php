@@ -42,7 +42,6 @@ $builder->addDefinitions([
     \Relay\Handler\Invite\ListInvitesHandler::class => function ($c) {
         return new \Relay\Handler\Invite\ListInvitesHandler(
             $c->get(\Relay\Repository\InviteRepository::class),
-            $c->get('settings'),
         );
     },
 
@@ -57,7 +56,6 @@ $builder->addDefinitions([
         return new \Relay\Handler\Invite\FetchInviteHandler(
             $c->get(\Relay\Repository\InviteRepository::class),
             $c->get('InviteStorageService'),
-            $c->get('settings'),
         );
     },
 
@@ -135,6 +133,7 @@ $builder->addDefinitions([
             $c->get(\Relay\Repository\DeviceKeyRepository::class),
             $c->get(\Relay\Repository\AccountRepository::class),
             $c->get(\Relay\Service\StorageService::class),
+            $c->get(\PDO::class),
             $settings['limits']['max_storage_per_account_bytes'],
         );
     },

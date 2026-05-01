@@ -56,9 +56,15 @@ final class CreateInviteHandler
         $blobPath = $this->storage->store($inviteId, $decoded);
         $dbExpiry = date('Y-m-d H:i:s', $expireTs);
 
-        $this->invites->create($inviteId, $accountId, $token, $blobPath, strlen($decoded), $dbExpiry);
+        try {
+            $this->invites->create($inviteId, $accountId, $token, $blobPath, strlen($decoded), $dbExpiry);
+        } catch (\Throwable $e) {
+            $this->storage->delete($blobPath);
+            throw $e;
+        }
 
-        $baseUrl = rtrim($this->settings['base_url'], '/');
+        $uri = $request->getUri();
+        $baseUrl = $uri->getScheme() . '://' . $uri->getAuthority();
         return $this->json(201, ['data' => [
             'invite_id'  => $inviteId,
             'token'      => $token,

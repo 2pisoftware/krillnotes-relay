@@ -19,7 +19,6 @@ final class FetchInviteHandler
     public function __construct(
         private readonly InviteRepository $invites,
         private readonly StorageService $storage,
-        private readonly array $settings,
     ) {}
 
     public function __invoke(ServerRequestInterface $request): ResponseInterface
@@ -54,7 +53,8 @@ final class FetchInviteHandler
             return $response->withHeader('Content-Type', 'application/json');
         }
 
-        $baseUrl = rtrim($this->settings['base_url'], '/');
+        $uri     = $request->getUri();
+        $baseUrl = $uri->getScheme() . '://' . $uri->getAuthority();
         $url     = htmlspecialchars("{$baseUrl}/invites/{$token}");
         return $this->html(200, <<<HTML
             <!doctype html><html lang="en"><head><meta charset="utf-8">

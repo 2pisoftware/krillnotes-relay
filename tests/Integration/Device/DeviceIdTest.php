@@ -61,7 +61,7 @@ final class DeviceIdTest extends TestCase
         $this->deviceKeys->add($recipientId, 'recipient_key_hex', 'device-id-abc123');
         $this->deviceKeys->markVerified('recipient_key_hex');
 
-        $routing = new BundleRoutingService($this->bundles, $this->deviceKeys, $this->accounts, $this->storage);
+        $routing = new BundleRoutingService($this->bundles, $this->deviceKeys, $this->accounts, $this->storage, $this->pdo);
         $header = json_encode([
             'workspace_id' => 'ws-001',
             'sender_device_key' => 'sender_key_hex',
@@ -88,7 +88,7 @@ final class DeviceIdTest extends TestCase
         $this->deviceKeys->add($recipientId, 'recipient_key_hex');
         $this->deviceKeys->markVerified('recipient_key_hex');
 
-        $routing = new BundleRoutingService($this->bundles, $this->deviceKeys, $this->accounts, $this->storage);
+        $routing = new BundleRoutingService($this->bundles, $this->deviceKeys, $this->accounts, $this->storage, $this->pdo);
         // Old-style header without recipient_device_ids
         $header = json_encode([
             'workspace_id' => 'ws-001',
@@ -117,7 +117,7 @@ final class DeviceIdTest extends TestCase
         $this->deviceKeys->add($recipientId, 'recipient_key_B', 'device-B');
         $this->deviceKeys->markVerified('recipient_key_B');
 
-        $routing = new BundleRoutingService($this->bundles, $this->deviceKeys, $this->accounts, $this->storage);
+        $routing = new BundleRoutingService($this->bundles, $this->deviceKeys, $this->accounts, $this->storage, $this->pdo);
 
         // Bundle routed to key A (device-A)
         $routing->routeBundle(json_encode([

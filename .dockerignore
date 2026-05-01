@@ -1,0 +1,10 @@
+.git
+.github
+.phpunit.cache
+.worktrees
+.claude
+vendor
+storage/database/*.sqlite
+storage/bundles/*
+storage/invites/*
+docs
